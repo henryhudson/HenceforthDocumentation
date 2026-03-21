@@ -836,6 +836,22 @@ Much like FORTH, Henceforth accepts integers as binary, octal, decimal and hexad
   erase    (addr u --)
            Fills u address units with zeros, effectively clearing
            the memory region.
+
+  allocate (u -- a-addr ior)
+           Allocates u cells of contiguous data space. Returns the
+           start address and an I/O result code (0 = success, -1 =
+           failure). Reuses previously freed blocks when possible.
+
+  free     (a-addr -- ior)
+           Releases previously allocated memory starting at addr.
+           Returns 0 on success. Adjacent freed blocks are merged
+           to reduce fragmentation.
+
+  resize   (a-addr u -- a-addr2 ior)
+           Changes the size of an allocation. If the new size fits
+           within the existing block, returns the same address.
+           Otherwise allocates a new block, copies existing data,
+           and frees the old block.
 \end{forthbox}
 
 % ──────────────────────────────────────────────────────────────────
