@@ -1604,10 +1604,14 @@ The \texttt{pay} word in the FORTH terminal opens the transaction builder. The p
 \end{itemize}
 
 \begin{notebox}
-\textbf{Smart Sync:} When the pay view opens, it skips fetching data that is already fresh (less than 60 seconds old) and runs any stale fetches concurrently. A times-table circle animation plays over the Bitcoin logo during sync, cycling through cardioid and nephroid patterns. If the user was recently viewing their wallet, the pay view opens almost instantly.
+\textbf{Smart Sync:} When a payment is initiated, UTXOs are loaded from the local disk cache first (instant). A network fetch only occurs on genuine first launch when no UTXO file exists. Fee quotes are cached for 5 minutes. A times-table circle animation (cardioid pattern) plays during broadcast. The payment flow trusts local UTXO state --- if a UTXO turns out to be already spent, ARC will reject with \texttt{DOUBLE\_SPEND\_ATTEMPTED}.
 \end{notebox}
 
-After a successful broadcast, the wallet immediately removes spent UTXOs from memory (preventing double-spend on rapid re-send), then refreshes the full UTXO set and transaction history from the network. The transaction appears in the history list straight away as a pending entry.
+After a successful broadcast, the wallet builds a local transaction model from the data it already has (inputs, outputs, addresses, amounts) and inserts it into the transaction history immediately --- no network fetch required. The ARC-returned \texttt{txid} is verified against the locally computed \texttt{txid} as cryptographic proof that the network accepted exactly what was built. Spent UTXOs are removed from memory (preventing double-spend on rapid re-send) and change UTXOs are added. Full transaction details from WhatsOnChain overwrite the local entry on the next sync.
+
+\begin{notebox}
+\textbf{Trust Local State:} Per the Bitcoin white paper (\S2), we built the transaction and signed it with our private keys --- we know exactly what it contains. There is no need to ask a third party (WhatsOnChain) what we just sent. ARC confirms the network saw it; the rest we already know.
+\end{notebox}
 
 \subsection{Transaction History}
 
@@ -1625,7 +1629,7 @@ The wallet displays a chronological transaction history with:
 A UTXO (Unspent Transaction Output) represents a discrete amount of Bitcoin that can be spent. The wallet tracks all UTXOs across all addresses.
 
 \begin{notebox}
-\textbf{Balance Reconciliation:} The displayed balance is derived from two sources: an independent balance API call (\texttt{getWalletBalance}) and reconciliation from the UTXO set. The UTXO-derived balance is authoritative --- if UTXOs are successfully fetched, the balance is recalculated from them:
+\textbf{Balance from UTXOs:} The displayed balance is computed solely from the UTXO set --- no separate balance API call is needed. When UTXOs are fetched, the balance is calculated as:
 \begin{lstlisting}
 confirmed   = sum of UTXOs with block height > 0
 unconfirmed = sum of UTXOs with block height = 0
@@ -1636,7 +1640,12 @@ Satoshi conversions use the named constant \texttt{satoshisPerBSV} (100,000,000)
 
 \subsection{Ordinal Protection}
 
-1Sat Ordinals are NFTs inscribed on single-satoshi UTXOs. The wallet automatically scans UTXOs for ordinals and marks them as protected --- preventing accidental spending of valuable inscriptions as transaction fees.
+1Sat Ordinals are NFTs inscribed on single-satoshi UTXOs. The wallet protects ordinals at two levels:
+
+\begin{enumerate}
+\item \textbf{Transaction builder:} UTXOs with a value of 1 satoshi are excluded from UTXO selection during transaction building --- a fast local check with no network call.
+\item \textbf{Inscription scanner:} For display in the Ordinals view, 1-sat UTXOs are scanned by fetching the raw transaction and detecting the \texttt{OP\_FALSE OP\_IF ... OP\_ENDIF} inscription pattern. Non-1-sat UTXOs are skipped entirely (ordinals are always exactly 1 sat). Results are cached per outpoint --- once a UTXO has been scanned, it is never re-fetched from the network.
+\end{enumerate}
 
 \section{API Providers}
 
@@ -1647,8 +1656,7 @@ The wallet uses a hybrid architecture with multiple blockchain service providers
 \toprule
 \textbf{Capability}      & \textbf{WhatsOnChain} & \textbf{GorillaPool} & \textbf{TAAL} & \textbf{JungleBus} \\
 \midrule
-Address balance           & \cmark & \xmark & \xmark & \xmark \\
-UTXOs                     & \cmark & \xmark & \xmark & \xmark \\
+UTXOs (balance derived)   & \cmark & \xmark & \xmark & \xmark \\
 Transaction history       & \cmark & \xmark & \xmark & \cmark \\
 BSV price                 & \cmark & \xmark & \xmark & \xmark \\
 Fee quotes                & \xmark & \cmark & \cmark & \xmark \\
