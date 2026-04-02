@@ -1586,9 +1586,10 @@ Scripts saved with \texttt{script-save} appear in the Files tab with an orange i
   op_nop       (--)
                Does nothing.
 
-  op_ver       (--) *Disabled*
-               Adds the protocol version that the transaction
-               will be evaluated under on to the stack.
+  op_ver       ( -- version)
+               Pushes the transaction version onto the stack.
+               Returns 1 (legacy) or 2 (Chronicle, post block
+               943,816).
 
   op_if        (f--)
                Executes code depending on the expression's flag.
@@ -1596,15 +1597,13 @@ Scripts saved with \texttt{script-save} appear in the Files tab with an orange i
   op_notif     (n--)
                Executes code depending on the expression's flag.
 
-  op_verif     (n--) *Disabled*
-               Executes code if the value removed from the stack
-               equals the protocol version the transaction will
-               be evaluated by.
+  op_verif     ( threshold -- flag)
+               Pushes TRUE if tx version >= threshold, FALSE
+               otherwise. Chronicle upgrade.
 
-  op_vernotif  (--) *Disabled*
-               Executes code if the value removed from the stack
-               differs to the protocol version the transaction
-               will be evaluated by.
+  op_vernotif  ( threshold -- flag)
+               Pushes TRUE if tx version < threshold, FALSE
+               otherwise. Chronicle upgrade.
 
   op_else      (--)
                Executes if the preceding OP_IF, OP_NOTIF, or
@@ -1721,6 +1720,18 @@ Scripts saved with \texttt{script-save} appear in the Files tab with an orange i
 
   op_bin2num  (n--)
               Converts byte sequence n into a numerical value.
+
+  op_substr   (start length --) data: (data -- substring)
+              Extracts a substring by start index and length.
+              Chronicle upgrade (0xb3).
+
+  op_left     (n --) data: (data -- left)
+              Extracts the leftmost N bytes.
+              Chronicle upgrade (0xb4).
+
+  op_right    (n --) data: (data -- right)
+              Extracts the rightmost N bytes.
+              Chronicle upgrade (0xb5).
 \end{forthbox}
 
 \begin{forthbox}[Bitwise Operator OP Codes]
@@ -1811,6 +1822,16 @@ Scripts saved with \texttt{script-save} appear in the Files tab with an orange i
                          The second value is logical right shifted
                          by the top value.
 
+  op_lshiftnum           (n shift -- result)
+                         Numeric left shift preserving sign. Distinct
+                         from op\_lshift which is bitwise on bytes.
+                         Chronicle upgrade (0xb6).
+
+  op_rshiftnum           (n shift -- result)
+                         Numeric right shift preserving sign. Distinct
+                         from op\_rshift which is bitwise on bytes.
+                         Chronicle upgrade (0xb7).
+
   op_booland             (n n1 -- f)
                          True flag returned if both n and n1 are
                          non-zero, else false.
@@ -1880,14 +1901,13 @@ Scripts saved with \texttt{script-save} appear in the Files tab with an orange i
 
 \begin{forthbox}[Reserved OP Codes]
   op_nop1    (--)
-  op_nop4    (--)
-  op_nop5    (--)
-  op_nop6    (--)
-  op_nop7    (--)
-  op_nop8    (--)
   op_nop9    (--)
   op_nop10   (--)
 \end{forthbox}
+
+\begin{notebox}
+\textbf{Chronicle Upgrade (Block 943,816):} NOP4--8 (0xb3--0xb7) were repurposed as \texttt{op\_substr}, \texttt{op\_left}, \texttt{op\_right}, \texttt{op\_lshiftnum}, and \texttt{op\_rshiftnum}. The transaction version (\texttt{op\_ver}) auto-switches from 1 to 2 at the activation block.
+\end{notebox}
 
 % ═════════════════════════════════════════════════════════════════
 \chapter{Bitcoin Wallet}
