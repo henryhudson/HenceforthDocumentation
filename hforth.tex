@@ -1296,17 +1296,67 @@ The transaction builder words allow programmatic construction of Bitcoin transac
   tx-broadcast    ( -- )
                   Builds, signs, and broadcasts the current
                   transaction to the BSV network via ARC.
+
+  send            (n -- )
+                  Standard payment in a single word. Reads the
+                  destination address(es) from the last ." string
+                  and the amount in satoshis from the stack.
+                  Auto-selects UTXOs from the default wallet,
+                  uses the wallet's fee rate, and broadcasts
+                  via ARC.
+                  Usage: ." 1A1zP1..." 1000 send
 \end{forthbox}
 
 \begin{notebox}
-\textbf{Example:} Send 1000 satoshis to an address with a custom fee:
+\textbf{Transaction Builder Example:} Send 1000 satoshis to an address with a custom fee rate using the step-by-step builder:
 \begin{lstlisting}
 tx-new
 250 tx-set-fee
-1000 tx-add-output 1ExampleAddress...
+." 1ExampleAddress..." 1000 tx-add-output
 tx-show
 tx-broadcast
 \end{lstlisting}
+\end{notebox}
+
+\begin{notebox}
+\textbf{Standard Payment Example:} The \texttt{send} word wraps the entire PayView payment flow into a single command. It uses the \emph{default wallet} (marked with a star on the wallet card):
+\begin{lstlisting}
+\ Single recipient:
+." 1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa" 1000 send
+
+\ Multiple recipients (space-separated):
+." 1A1zP1... 1BvBMS..." 5000 send
+\end{lstlisting}
+Addresses are wrapped in \texttt{."} (dot-quote), which is FORTH's string literal syntax. The address string is placed on the terminal output, and \texttt{send} reads it from there. Multiple addresses can be space-separated within a single \texttt{."} string for multi-output transactions.
+\end{notebox}
+
+\subsubsection{Standard Transaction Script}
+
+Every installation includes a \texttt{standard-transaction.fs} file in the Files tab. This is a Bitcoin Script file that defines the OP\_RETURN output attached to your payments. It is automatically loaded each time you open the Pay view.
+
+\begin{lstlisting}
+( Standard Transaction Script )
+
+SCRIPT-BEGIN
+OP_FALSE OP_RETURN
+." Hello, you are welcome." >data data>script
+SCRIPT-END
+\end{lstlisting}
+
+\textbf{How it works:}
+\begin{enumerate}
+\item \texttt{SCRIPT-BEGIN} activates script recording mode
+\item \texttt{OP\_FALSE OP\_RETURN} emits the opcodes for a data-carrying output
+\item \texttt{."} places the message on the terminal output
+\item \texttt{>data} converts it to raw bytes on the data stack
+\item \texttt{data>script} emits those bytes as \texttt{PUSHDATA} into the script buffer
+\item \texttt{SCRIPT-END} finalises the compiled script
+\end{enumerate}
+
+To customise your standard transaction, edit the message string in the file. The Pay view re-reads the file from disk each time it opens, so edits take effect immediately. The file also appears in the Script tab of the script picker if you need to switch between scripts.
+
+\begin{notebox}
+\textbf{Note on comments:} Script files use \texttt{( )} parenthetical comments rather than \texttt{\textbackslash} line comments. The script picker flattens newlines when compiling, which causes \texttt{\textbackslash} comments to consume the rest of the file.
 \end{notebox}
 
 % ──────────────────────────────────────────────────────────────────
@@ -1888,6 +1938,12 @@ Each wallet is represented by a \emph{Wallet Card} in the app interface. A card 
 
 Multiple wallets can be created and managed simultaneously. The wallet card interface supports creating, renaming, and deleting wallets, with biometric (Face ID / Touch ID) authentication required to access sensitive details.
 
+\subsubsection*{Default Wallet}
+
+One wallet can be marked as the \emph{default wallet}, indicated by a star on the wallet card. The default wallet is used by the terminal \texttt{send} word and other non-UI operations. If no default is set, the first wallet is used.
+
+To change the default wallet, open the wallet details view and tap \textbf{Set as Default Wallet}. The setting persists across app launches.
+
 \section{Transactions}
 
 \subsection{Receiving}
@@ -1978,12 +2034,15 @@ The wallet uses a hybrid architecture with multiple blockchain service providers
 \midrule
 UTXOs (balance derived)   & \cmark & \xmark & \xmark & \xmark \\
 Transaction history       & \cmark & \xmark & \xmark & \cmark \\
+SPV Merkle proofs         & \cmark & \xmark & \xmark & \xmark \\
 BSV price                 & \cmark & \xmark & \xmark & \xmark \\
 Fee quotes                & \xmark & \cmark & \cmark & \xmark \\
-Broadcast transactions    & \xmark & \cmark & \cmark & \xmark \\
+Broadcast (ARC)           & \xmark & \cmark & \cmark* & \xmark \\
 Real-time monitoring      & \xmark & \xmark & \xmark & \cmark \\
 \bottomrule
 \end{tabular}
+
+\noindent *TAAL requires a user-configured API key. GorillaPool is the primary broadcaster; TAAL is failover.
 \end{center}
 
 Each provider handles what it does best. API keys and subscription IDs are stored securely in the iOS Keychain and can be configured in Settings $\rightarrow$ API \& Miners.
