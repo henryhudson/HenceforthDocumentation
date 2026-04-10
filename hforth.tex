@@ -1,4 +1,4 @@
-\documentclass[a4paper, 11pt]{book}
+\documentclass[a4paper, 11pt, openany]{book}
 
 % ─── Encoding & Language ─────────────────────────────────────────
 \usepackage[utf8]{inputenc}
@@ -8,6 +8,7 @@
 % ─── Layout ──────────────────────────────────────────────────────
 \usepackage{geometry}
 \geometry{left=2.5cm, right=2.5cm, top=2.8cm, bottom=2.8cm}
+\raggedbottom
 
 % ─── Fonts ───────────────────────────────────────────────────────
 \usepackage{lmodern}
@@ -15,35 +16,47 @@
 \usepackage{inconsolata}
 \renewcommand{\familydefault}{\ttdefault}
 
-% ─── Colour ──────────────────────────────────────────────────────
+% ─── Colour — Retro-Future Palette ──────────────────────────────
 \usepackage[dvipsnames,svgnames,x11names]{xcolor}
 
-\definecolor{forthDark}{HTML}{0B1B0B}
-\definecolor{forthBlue}{HTML}{2ECC40}
-\definecolor{forthCyan}{HTML}{7DCEA0}
-\definecolor{forthGold}{HTML}{CCAA00}
-\definecolor{forthOrange}{HTML}{CC7700}
-\definecolor{forthBg}{HTML}{0D1B0D}
-\definecolor{forthGrey}{HTML}{6B8E6B}
-\definecolor{forthGreen}{HTML}{00FF41}
+\definecolor{forthDark}{HTML}{111111}
+\definecolor{forthBg}{HTML}{0A0E0A}
+\definecolor{forthOrange}{HTML}{E8731E}
+\definecolor{forthAmber}{HTML}{F5A623}
+\definecolor{forthGold}{HTML}{CC8800}
+\definecolor{forthCyan}{HTML}{2CA5A0}
+\definecolor{forthTeal}{HTML}{1A8A7A}
+\definecolor{forthGreen}{HTML}{1B9E3E}
+\definecolor{forthBright}{HTML}{00FF41}
+\definecolor{forthGrey}{HTML}{888888}
+\definecolor{forthDim}{HTML}{CCCCCC}
+\definecolor{forthPurple}{HTML}{7744AA}
+\definecolor{forthPanelBg}{HTML}{F5F3EF}
+
+% ─── White background, dark text ────────────────────────────────
+\color{forthDark}
 
 % ─── Graphics & Tables ──────────────────────────────────────────
 \usepackage{graphicx}
 \usepackage{wrapfig}
 \usepackage{multirow}
 \usepackage{booktabs}
+\usepackage{colortbl}
+\arrayrulecolor{forthGrey}
+\setlength{\heavyrulewidth}{0.8pt}
+\setlength{\lightrulewidth}{0.4pt}
 
 % ─── Lists ───────────────────────────────────────────────────────
 \usepackage{enumitem}
-\setlist[enumerate]{label=\textcolor{forthBlue}{\roman*.}, leftmargin=*, itemsep=4pt}
-\setlist[itemize]{label=\textcolor{forthBlue}{\textbullet}, leftmargin=*, itemsep=4pt}
+\setlist[enumerate]{label=\textcolor{forthOrange}{\bfseries\arabic*.}, leftmargin=*, itemsep=4pt}
+\setlist[itemize]{label=\textcolor{forthOrange}{\raisebox{0.2ex}{\rule{0.6ex}{0.6ex}}}, leftmargin=*, itemsep=4pt}
 
 % ─── Boxes ───────────────────────────────────────────────────────
 \usepackage[most]{tcolorbox}
 
 \usepackage{listings}
 \lstset{
-  basicstyle=\ttfamily\small,
+  basicstyle=\ttfamily\small\color{forthDark},
   breaklines=true,
   columns=fixed,
   keepspaces=true,
@@ -51,63 +64,70 @@
   belowskip=0pt,
 }
 
+% Forthbox: dark terminal panel — green on black, bold label
 \newtcblisting{forthbox}[1][]{%
   enhanced,
   breakable,
   colback=forthBg,
-  colframe=forthBlue,
-  coltext=forthGreen,
+  colframe=forthDark,
+  coltext=forthBright,
   coltitle=white,
-  fonttitle=\bfseries\sffamily,
-  boxrule=0.6pt,
-  arc=3pt,
+  fonttitle=\bfseries,
+  boxrule=1.2pt,
+  arc=0pt,
   left=6mm, right=6mm, top=4mm, bottom=4mm,
   attach boxed title to top left={yshift=-3mm, xshift=8mm},
   boxed title style={
-    colback=forthBlue,
-    arc=2pt,
+    colback=forthOrange,
+    arc=0pt,
     boxrule=0pt,
     left=4mm, right=4mm, top=1.5mm, bottom=1.5mm
   },
   title={#1},
-  shadow={1mm}{-1mm}{0mm}{black!8},
   listing only,
-  listing options={basicstyle=\ttfamily\small\color{forthGreen}, breaklines=true, columns=fixed, keepspaces=true},
+  listing options={basicstyle=\ttfamily\small\color{forthBright}, breaklines=true, columns=fixed, keepspaces=true},
 }
 
+% Notebox: warm panel with thick orange left bar
 \newtcolorbox{notebox}{%
   enhanced,
   breakable,
-  colback=forthGold!8,
-  colframe=forthGold,
+  colback=forthPanelBg,
+  colframe=forthOrange,
+  coltext=forthDark,
   boxrule=0pt,
-  borderline west={3pt}{0pt}{forthGold},
+  borderline west={3pt}{0pt}{forthOrange},
   arc=0pt,
   left=5mm, right=5mm, top=3mm, bottom=3mm,
-  fontupper=\sffamily\small,
+  fontupper=\small,
 }
 
-% ─── Section styling ────────────────────────────────────────────
+% ─── Section styling — Retro-Future ────────────────────────────
 \usepackage{titlesec}
 
+% Chapter: big bold orange number, title on dark strip
 \titleformat{\chapter}[display]
-  {\normalfont\huge\bfseries\sffamily\color{forthDark}}
+  {\normalfont\huge\bfseries\color{forthDark}}
   {\tikz[remember picture,overlay]{%
-    \fill[forthBlue!10] (-1,-1) rectangle (\textwidth+1,2.2);
-    \node[anchor=west, text=forthBlue!30, font=\fontsize{72}{72}\selectfont\bfseries\sffamily]
-      at (-0.5,0.4) {\thechapter};
+    \fill[forthDark] (-2,-0.6) rectangle (\textwidth+2,2.4);
+    \node[anchor=west, text=forthOrange, font=\fontsize{80}{80}\selectfont\bfseries]
+      at (-0.5,0.6) {\thechapter};
+    \node[anchor=south east, text=forthGrey, font=\tiny, opacity=0.5]
+      at (\textwidth+1.5,-0.3) {HENCEFORTH};
   }}
   {0pt}
-  {\Huge}
-  [\vspace{-4pt}{\color{forthBlue}\rule{\textwidth}{1.5pt}}]
+  {\color{white}\Huge}
+  [\vspace{2pt}{\color{forthOrange}\rule{\textwidth}{3pt}}]
 
+% Section: orange bar + dark text
 \titleformat{\section}
-  {\normalfont\Large\bfseries\sffamily\color{forthDark}}
-  {\textcolor{forthBlue}{\thesection}}{0.6em}{}
-  [\vspace{-6pt}{\color{forthBlue!30}\rule{\textwidth}{0.5pt}}]
+  {\normalfont\Large\bfseries\color{forthDark}}
+  {\colorbox{forthOrange}{\makebox[1.8em][c]{\color{white}\thesection}}}{0.6em}{}
+  [\vspace{-6pt}{\color{forthDim}\rule{\textwidth}{0.3pt}}]
 
+% Subsection: teal number, dark text
 \titleformat{\subsection}
-  {\normalfont\large\bfseries\sffamily\color{forthDark}}
+  {\normalfont\large\bfseries\color{forthDark}}
   {\textcolor{forthCyan}{\thesubsection}}{0.6em}{}
 
 \titlespacing*{\chapter}{0pt}{-20pt}{30pt}
@@ -118,16 +138,16 @@
 \usepackage{fancyhdr}
 \pagestyle{fancy}
 \fancyhf{}
-\fancyhead[LE]{\sffamily\small\textcolor{forthGrey}{\leftmark}}
-\fancyhead[RO]{\sffamily\small\textcolor{forthGrey}{\rightmark}}
-\fancyfoot[C]{\sffamily\small\textcolor{forthBlue}{\thepage}}
-\renewcommand{\headrulewidth}{0.4pt}
-\renewcommand{\headrule}{\hbox to\headwidth{\color{forthBlue!30}\leaders\hrule height \headrulewidth\hfill}}
+\fancyhead[LE]{\small\textcolor{forthGrey}{\leftmark}}
+\fancyhead[RO]{\small\textcolor{forthGrey}{\rightmark}}
+\fancyfoot[C]{\small\textcolor{forthOrange}{\thepage}}
+\renewcommand{\headrulewidth}{0.5pt}
+\renewcommand{\headrule}{\hbox to\headwidth{\color{forthDark}\leaders\hrule height \headrulewidth\hfill}}
 \renewcommand{\footrulewidth}{0pt}
 
 \fancypagestyle{plain}{%
   \fancyhf{}
-  \fancyfoot[C]{\sffamily\small\textcolor{forthBlue}{\thepage}}
+  \fancyfoot[C]{\small\textcolor{forthOrange}{\thepage}}
   \renewcommand{\headrulewidth}{0pt}
 }
 
@@ -135,7 +155,7 @@
 \usepackage{hyperref}
 \hypersetup{
   colorlinks=true,
-  linkcolor=blue,
+  linkcolor=forthCyan,
   urlcolor=forthOrange,
   citecolor=forthGreen,
   pdfauthor={Henry Hudson},
@@ -144,46 +164,75 @@
 
 % ─── TikZ ────────────────────────────────────────────────────────
 \usepackage{tikz}
-\usetikzlibrary{calc}
+\usetikzlibrary{calc,patterns}
 
 % ─── Misc ────────────────────────────────────────────────────────
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{pifont}
-\newcommand{\cmark}{\textcolor{forthBlue}{\ding{51}}}%
+\newcommand{\cmark}{\textcolor{forthGreen}{\ding{51}}}%
 \newcommand{\xmark}{\textcolor{forthGrey}{\ding{55}}}%
 \usepackage{fancyvrb}
 
 \setlength{\parindent}{0pt}
 \setlength{\parskip}{6pt plus 2pt minus 1pt}
+\setlength{\emergencystretch}{3em}
 
 \let\cleardoublepage\clearpage
 
 % ═════════════════════════════════════════════════════════════════
 \begin{document}
 
-% ─── Title Page ──────────────────────────────────────────────────
+% ─── Title Page — Retro-Future ──────────────────────────────────
 \begin{titlepage}
 \begin{tikzpicture}[remember picture, overlay]
-  % ── Background ──
-  \fill[black] (current page.south west) rectangle (current page.north east);
-  % ── Accent line across the page ──
-  \fill[forthOrange] ($(current page.west)+(0,0.5)$) rectangle ($(current page.east)+(0,0.58)$);
-  % ── Title ──
-  \node[anchor=west, text=white, font=\fontsize{52}{56}\selectfont\bfseries\ttfamily]
-    at ($(current page.west)+(2.5,3.5)$) {Henceforth};
-  % ── Subtitle ──
-  \node[anchor=west, text=forthCyan, font=\Large\ttfamily]
-    at ($(current page.west)+(2.5,1.8)$) {A FORTH Programming Environment for iOS};
+  % ── Black background ──
+  \fill[forthDark] (current page.south west) rectangle (current page.north east);
+  %
+  % ── Bold orange band — full width, upper third ──
+  \fill[forthOrange] ($(current page.north west)+(0,-6)$) rectangle ($(current page.north east)+(0,-10.5)$);
+  %
+  % ── Thin geometric accent lines ──
+  \draw[white, line width=0.4pt] ($(current page.north west)+(0,-10.7)$) -- ($(current page.north east)+(0,-10.7)$);
+  \draw[forthAmber, line width=2pt] ($(current page.north west)+(0,-11)$) -- ($(current page.north east)+(0,-11)$);
+  %
+  % ── Title — large, white, on the orange band ──
+  \node[anchor=west, text=white, font=\fontsize{56}{60}\selectfont\bfseries\ttfamily]
+    at ($(current page.north west)+(2.5,-7.8)$) {HENCEFORTH};
+  %
+  % ── Subtitle — on the orange band, below title ──
+  \node[anchor=west, text=forthDark, font=\large\ttfamily]
+    at ($(current page.north west)+(2.5,-9.5)$) {A FORTH Programming Environment for iOS};
+  %
+  % ── BSV tagline — below the band, teal ──
+  \node[anchor=west, text=forthCyan, font=\normalsize\ttfamily]
+    at ($(current page.north west)+(2.5,-12.2)$) {+ Bitcoin SV Wallet};
+  %
+  % ── Terminal excerpt — faded code on the dark area ──
+  \node[anchor=west, text=forthBright, font=\small\ttfamily, opacity=0.25]
+    at ($(current page.north west)+(2.5,-14)$) {> : SQUARE DUP * ;};
+  \node[anchor=west, text=forthBright, font=\small\ttfamily, opacity=0.20]
+    at ($(current page.north west)+(2.5,-14.8)$) {> 5 SQUARE .};
+  \node[anchor=west, text=forthBright, font=\small\ttfamily, opacity=0.15]
+    at ($(current page.north west)+(2.5,-15.6)$) {25 ok.};
+  \node[anchor=west, text=forthBright, font=\small\ttfamily, opacity=0.12]
+    at ($(current page.north west)+(2.5,-16.8)$) {> TX-NEW 5000 TX-SET-FEE};
+  \node[anchor=west, text=forthBright, font=\small\ttfamily, opacity=0.09]
+    at ($(current page.north west)+(2.5,-17.6)$) {> TX-ADD-OUTPUT TX-BROADCAST};
+  %
   % ── Author ──
-  \node[anchor=west, text=forthGrey, font=\large\ttfamily]
-    at ($(current page.west)+(2.5,-0.8)$) {Henry Hudson};
-  % ── Version / year ──
-  \node[anchor=south east, text=forthGrey!60, font=\small\ttfamily]
-    at ($(current page.south east)+(-2.5,1.5)$) {Documentation \(\cdot\) 2026};
-  % ── Decorative prompt at bottom left ──
-  \node[anchor=south west, text=forthBlue, font=\ttfamily\Large, opacity=0.4]
-    at ($(current page.south west)+(2.5,1.5)$) {ok.};
+  \node[anchor=south west, text=forthGrey, font=\large\ttfamily]
+    at ($(current page.south west)+(2.5,3)$) {Henry Hudson};
+  % ── Version ──
+  \node[anchor=south east, text=forthGrey, font=\small\ttfamily]
+    at ($(current page.south east)+(-2.5,3)$) {v1.0 \(\cdot\) 2026};
+  %
+  % ── Bottom orange accent strip ──
+  \fill[forthOrange] ($(current page.south west)+(0,1.5)$) rectangle ($(current page.south east)+(0,1.7)$);
+  %
+  % ── Decorative prompt ──
+  \node[anchor=south west, text=forthBright, font=\ttfamily, opacity=0.2]
+    at ($(current page.south west)+(2.5,0.4)$) {ok.};
 \end{tikzpicture}
 \end{titlepage}
 
@@ -213,35 +262,29 @@ Private for the time being --- get in touch if you would like access.
 \chapter{Goals}
 % ═════════════════════════════════════════════════════════════════
 
-\section{Integrate with Bitcoin (BSV)}
+\section{Achieved}
 
-\begin{enumerate}
-\item Fetch latest block headers
-\item Integrate with SwiftBSV for transactions, verification, wallet functions etc.
-\item OPCodes file available to load and make use of
-\item Make use of Timestamp server for users words and CRDT (Conflict-free Replicated Data Type) system
-\item Full sCrypt capability --- each FORTH file will create a sCrypt that runs the op codes within
-\end{enumerate}
+\begin{itemize}
+\item \textbf{Bitcoin (BSV) integration} --- full wallet with HD key derivation (BIP-44 and Type42), transaction building, ARC broadcasting with failover, SPV verification, Paymail support, and 140+ Bitcoin Script opcodes including the Chronicle upgrade.
+\item \textbf{Block headers} --- latest block height fetched on launch; SPV Merkle proof verification for transaction confirmation.
+\item \textbf{SwiftBSV} --- fully integrated for transactions, Script building, BIP-32/39 key management, and ECDSA signing.
+\item \textbf{OPCodes} --- all standard and Chronicle-restored opcodes available as FORTH words. Script Recording mode assembles Bitcoin Scripts from the terminal.
+\item \textbf{Files} --- full CRUD for \texttt{.fs} and \texttt{.forth} files with iCloud backup. Script files identified by \texttt{SCRIPT-BEGIN}/\texttt{SCRIPT-END} markers.
+\item \textbf{Colour customisation} --- foreground and background colour pickers, keyboard selection, and Dynamic Type support throughout.
+\item \textbf{Forth-2012 compliance} --- 133/133 CORE words implemented, verified by the Hayes test suite.
+\end{itemize}
 
 \section{Get People Coding}
 
 Provide a simple interface for the FORTH programming language, making it easy for people to learn to code.
 
-\section{Access to Files App}
+\section{Future}
 
-If permission is granted by the user, access to their documents will allow the program to load \texttt{.fs}, \texttt{.forth} and possibly other files for the user to use how they wish.
-
-Create, read, update, delete --- CRUD operations should be supported, at least for FORTH files.
-
-If access is granted, files will be stored on user's iCloud for backup/safety.
-
-\section{Further Maths}
-
-Eventually add functionality for trigonometry and calculus.
-
-\section{Settings}
-
-Colour customisation is available for users to pick a foreground colour and a background colour. Also allow users to pick between the various keyboards.
+\begin{itemize}
+\item Full sCrypt capability --- each FORTH file will create a sCrypt that runs the opcodes within.
+\item CRDT (Conflict-free Replicated Data Type) system using the timestamp server for user-defined words.
+\item Trigonometry and calculus extensions.
+\end{itemize}
 
 % ═════════════════════════════════════════════════════════════════
 \chapter{Credits}
@@ -1086,9 +1129,6 @@ Much like FORTH, Henceforth accepts integers as binary, octal, decimal and hexad
                Returns n2, the actual number of characters
                received.
 
-  see          (--)
-               Checks dictionary for word and outputs definition.
-
   sessionInput (--)
                Displays session input.
 
@@ -1238,18 +1278,10 @@ Henceforth has two stacks: the integer stack (main) and the data stack (for raw 
                           Takes an address and displays its
                           history information to the terminal.
 
-  wocgetblockby           (n--)
-                          Takes a value from the stack and
+  wocgetblockbyheight     (n--)
+                          Takes a block height from the stack and
                           searches WhatsOnChain for info on that
                           block.
-
-  wocgorillapoolfeequote  (--)
-                          Fetches GorillaPool's fee quote via
-                          ARC policy endpoint.
-
-  taalfeequote            (--)
-                          Fetches TAAL's fee quote via ARC
-                          policy endpoint.
 \end{forthbox}
 
 % ──────────────────────────────────────────────────────────────────
@@ -1901,6 +1933,9 @@ Scripts saved with \texttt{script-save} appear in the Files tab with an orange i
 
 \begin{forthbox}[Reserved OP Codes]
   op_nop1    (--)
+  op_nop4    (--)
+  op_nop5    (--)
+  op_nop6    (--)
   op_nop9    (--)
   op_nop10   (--)
 \end{forthbox}
@@ -1935,7 +1970,7 @@ The wallet is built on a hierarchical deterministic (HD) key structure, meaning 
 
 \subsection{Address Discovery}
 
-The wallet discovers addresses with funds using a shared Type42 scanner (\texttt{scanType42Addresses}). The scanner is \emph{derivationType-independent} --- it always tries Type42 first if the master key exists in Keychain, regardless of what \texttt{derivationType} says on the wallet card. This prevents funds from becoming invisible if the derivation type metadata is corrupted.
+The wallet discovers addresses with funds using a shared Type42 scanner (\texttt{scan\-Type42\-Addresses}). The scanner is \emph{derivationType-independent} --- it always tries Type42 first if the master key exists in Keychain, regardless of what \texttt{derivationType} says on the wallet card. This prevents funds from becoming invisible if the derivation type metadata is wrong.
 
 \begin{itemize}
 \item \textbf{Dynamic scan range:} Scans at least 20 addresses (gap limit) past the last address with activity, with a minimum floor of 50 addresses.
@@ -1971,12 +2006,17 @@ To change the default wallet, open the wallet details view and tap \textbf{Set a
 To receive BSV, share your wallet's receiving address or scan its QR code. The wallet monitors for incoming transactions using:
 
 \begin{enumerate}
-\item \textbf{JungleBus REST polling} --- checks every 30 seconds for new transactions via the \texttt{GET /v1/address/get/\{address\}} endpoint
-\item \textbf{JungleBus WebSocket} --- optional real-time push notifications for near-instant detection (requires a subscription from the JungleBus dashboard)
-\item \textbf{Periodic sync} --- full balance and UTXO refresh every 60 seconds as a safety net
+\item \textbf{JungleBus REST polling} --- polls every 30 seconds for new transactions via the \texttt{GET /v1/address/get/\{address\}} endpoint. When a new transaction ID is detected, the wallet triggers an automatic refresh.
+\item \textbf{Periodic sync} --- full balance and UTXO refresh as a safety net
 \end{enumerate}
 
 When a new transaction is detected, the wallet automatically refreshes the balance, UTXOs, and transaction history.
+
+\subsection{Notifications}
+
+The wallet uses a UTXO-based deposit detection system. Instead of comparing balances (which can fluctuate mid-sync), it tracks known UTXO outpoints (\texttt{txHash:txPos}) per wallet in UserDefaults. Only genuinely new outpoints trigger a notification --- the system is immune to confirmation state changes and mid-sync transient balances.
+
+When a wallet is first seen, existing outpoints are seeded silently (no ``received entire balance'' notification on first install).
 
 \subsection{Sending}
 
@@ -2008,6 +2048,15 @@ After a successful broadcast, the wallet builds a local transaction model from t
 \begin{notebox}
 \textbf{Trust Local State:} Per the Bitcoin white paper (\S2), we built the transaction and signed it with our private keys --- we know exactly what it contains. There is no need to ask a third party (WhatsOnChain) what we just sent. ARC confirms the network saw it; the rest we already know.
 \end{notebox}
+
+\subsection{Paymail}
+
+Paymail allows sending BSV to human-readable addresses (e.g., \texttt{user@example.com}) instead of raw Bitcoin addresses. The wallet implements:
+
+\begin{itemize}
+\item \textbf{BRC-30 receive-transaction callbacks} --- P2P payment destinations resolved via the \texttt{.well-known/bsvalias} capability discovery. The payee's server provides a fresh output script for each payment.
+\item \textbf{Automatic resolution} --- when a paymail address is entered in the pay view, the wallet resolves it to a Bitcoin address transparently.
+\end{itemize}
 
 \subsection{Transaction History}
 
@@ -2043,6 +2092,16 @@ Satoshi conversions use the named constant \texttt{satoshisPerBSV} (100,000,000)
 \item \textbf{Inscription scanner:} For display in the Ordinals view, 1-sat UTXOs are scanned by fetching the raw transaction and detecting the \texttt{OP\_FALSE OP\_IF ... OP\_ENDIF} inscription pattern. Non-1-sat UTXOs are skipped entirely (ordinals are always exactly 1 sat). Results are cached per outpoint --- once a UTXO has been scanned, it is never re-fetched from the network.
 \end{enumerate}
 
+\subsection{UTXO Split}
+
+From the UTXO detail view, a single UTXO can be split into up to 240 separate outputs across fresh derived addresses. This is useful for:
+
+\begin{itemize}
+\item Preparing UTXOs for future transactions (avoiding the need to wait for change confirmations)
+\item Distributing funds across addresses for privacy
+\item Creating multiple 1-sat UTXOs for ordinal inscriptions
+\end{itemize}
+
 \section{API Providers}
 
 The wallet uses a hybrid architecture with multiple blockchain service providers:
@@ -2074,6 +2133,43 @@ Each provider handles what it does best. API keys and subscription IDs are store
 \item \textbf{Keychain storage} --- All sensitive material (keys, seeds, API tokens) stored with \texttt{.whenUnlockedThisDeviceOnly} accessibility --- encrypted at rest, tied to the device.
 \item \textbf{Seed verification} --- After creating a wallet, users are prompted to verify their seed phrase via a 3-word quiz.
 \item \textbf{No server dependency} --- The wallet is fully self-custodial. No account, no registration, no server holds your keys.
+\item \textbf{Message encryption (BRC-2)} --- Electrum ECIES format for end-to-end encrypted messages between BSV keys. Uses ECDH key agreement, AES-256-CBC encryption, and HMAC-SHA256 authentication. Wire-compatible with the \texttt{@bsv/sdk} \texttt{EncryptedMessage} class. Format: \texttt{"BIE1" $\|$ pubkey $\|$ ciphertext $\|$ HMAC}.
+\item \textbf{Wallet file encryption} --- Wallet data files encrypted with AES-256-GCM using a Keychain-backed key before syncing to iCloud.
 \end{itemize}
+
+\subsection{QR Code Scanner}
+
+A unified QR scanner in Settings handles three QR code types, routed automatically by content:
+
+\begin{enumerate}
+\item \textbf{\texttt{hfauth:} prefix} --- BRC-103 authentication flow (see below)
+\item \textbf{WIF private key} (Base58Check version byte \texttt{0x80}) --- prompts for a wallet name, then imports via \texttt{Wallet.restoreFromWIF()}
+\item \textbf{Bitcoin address} (version byte \texttt{0x00}) --- opens the pay view pre-filled with the scanned address
+\end{enumerate}
+
+\subsection{BRC-103 Authentication}
+
+BRC-103 provides passwordless authentication to web services using Bitcoin key pairs:
+
+\begin{enumerate}
+\item A web service displays a QR code containing a challenge and callback URL (prefixed with \texttt{hfauth:})
+\item The wallet scans the QR, displays the requesting domain, and asks for user approval
+\item On approval, the wallet signs the challenge with the wallet's identity key and sends the signature to the callback URL
+\item The web service verifies the signature against the wallet's public key
+\end{enumerate}
+
+No passwords, no accounts --- just cryptographic proof of key ownership.
+
+\subsection{BRC-100 Wallet Interface}
+
+The wallet exposes a subset of its capabilities via a URL scheme for integration with external applications:
+
+\begin{verbatim}
+henceforth://wallet/{method}?params=...
+\end{verbatim}
+
+Supported operations include key derivation, signing, encryption, and certificate management (BRC-52/53). All sensitive operations require user approval via an on-screen confirmation sheet with biometric authentication.
+
+The interface follows the BRC-100 specification: a \texttt{WalletInterface} protocol defines the contract, and a \texttt{HenceforthWallet} adapter bridges to the existing wallet, FORTH interpreter, and ARC broadcasting infrastructure.
 
 \end{document}
