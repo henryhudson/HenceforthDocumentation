@@ -266,7 +266,7 @@ Private for the time being --- get in touch if you would like access.
 
 \begin{itemize}
 \item \textbf{Bitcoin (BSV) integration} --- full wallet with HD key derivation (BIP-44 and Type42), transaction building, ARC broadcasting with failover, SPV verification, Paymail support, and 140+ Bitcoin Script opcodes including the Chronicle upgrade.
-\item \textbf{Block headers} --- latest block height fetched on launch; SPV Merkle proof verification for transaction confirmation.
+\item \textbf{Block headers} --- locally chain-linked header store anchored to a hardcoded checkpoint, auto-synced from chain tip on every launch via a WebSocket history stream. SPV Merkle proof verification is bounded to the chain-validated range --- no silent network fallback for missing headers.
 \item \textbf{SwiftBSV} --- fully integrated for transactions, Script building, BIP-32/39 key management, and ECDSA signing.
 \item \textbf{OPCodes} --- all standard and Chronicle-restored opcodes available as FORTH words. Script Recording mode assembles Bitcoin Scripts from the terminal.
 \item \textbf{Files} --- full CRUD for \texttt{.fs} and \texttt{.forth} files with iCloud backup. Script files identified by \texttt{SCRIPT-BEGIN}/\texttt{SCRIPT-END} markers.
@@ -2066,8 +2066,101 @@ The wallet displays a chronological transaction history with:
 \item \textbf{Direction detection} --- incoming (received) vs outgoing (sent), determined by checking whether any inputs belong to the wallet
 \item \textbf{Grouping} --- transactions are grouped by: Pending, Today, Yesterday, This Week, This Month, Earlier
 \item \textbf{Search and filter} --- filter by amount, date range, or search by transaction ID
-\item \textbf{SPV verification} --- transactions can be verified against block headers using Simplified Payment Verification
+\item \textbf{SPV verification} --- transactions can be verified against a locally chain-linked block header store anchored to a hardcoded checkpoint. See the \emph{SPV Architecture} section below.
 \end{itemize}
+
+\section{SPV Architecture}
+
+The wallet implements Simplified Payment Verification per Section 8 of the Bitcoin white paper: clients trust a locally maintained chain of block headers and verify individual transactions against it using Merkle proofs. The entire SPV trust model rests on the invariants below; violating any of them reopens a trust hole.
+
+\begin{notebox}
+\textbf{SPV trust boundary:} every header in the local store is either the hardcoded checkpoint or transitively chain-links back to it via a series of PoW-validated, chain-linked intermediate headers. There is no silent network fallback in the verification path --- if Henceforth doesn't have the header locally, it refuses to verify the transaction and reports a pending-sync state instead.
+\end{notebox}
+
+\subsection{Trust Anchor}
+
+The wallet ships with a hardcoded checkpoint in \texttt{SPVCheckpoint.mainnet} --- a tuple of \texttt{(height, hash, previousblockhash, merkleroot, version, time, nonce, bits)} for a recent mainnet block. This is the only header trusted without chain-linkage proof. The current pinned checkpoint is at a block roughly 500 confirmations below the then-tip, providing orders-of-magnitude safety margin against reorganization.
+
+The checkpoint hash doubles as its own migration version marker: bumping \texttt{SPVCheckpoint.mainnet} in source automatically triggers a wipe of every user's local header store on next launch, followed by a fresh re-sync from the new anchor. There is no sidecar file or explicit version field.
+
+\subsection{Header Store}
+
+The local header store is \texttt{FORTH.blockHeaders: [Int: WOCGetHeadersModel]}, a dictionary keyed by block height. Every entry must satisfy four invariants:
+
+\begin{enumerate}
+\item \textbf{Non-empty merkleroot} --- enforced by \texttt{FORTH.is\-Authoritative\-Block\-Header}. Pre-Phase-1 placeholder rows from the legacy hash-only ledger are dropped on load.
+\item \textbf{Individual PoW validates} --- double-SHA256 of the serialized header must be below the target encoded in the header's \texttt{bits} field.
+\item \textbf{Chain-linked to parent} --- the header's \texttt{previousblockhash} must equal the hash of the header at \texttt{height - 1} in the store.
+\item \textbf{Transitively anchored to the checkpoint} --- walking backward through parents eventually reaches \texttt{SPVCheckpoint.mainnet}.
+\end{enumerate}
+
+\subsection{Validated Tip}
+
+\texttt{FORTH.validatedTipHeight} is the highest block height whose header transitively chain-links back to the checkpoint via a contiguous run in \texttt{blockHeaders}. It initializes to the checkpoint height on first launch and advances only when a new run chain-links continuously from the current tip.
+
+This distinction matters: a header may be structurally present in \texttt{blockHeaders} yet not covered by \texttt{validatedTipHeight}. That happens when the WebSocket sync streams headers faster than chain validation links them forward --- the incoming batch is stored but the validated tip doesn't advance until the gap is filled. SPV verification uses \texttt{validatedTipHeight} as the trust upper bound, so unvalidated islands are invisible to proof checks.
+
+\begin{notebox}
+\textbf{\texttt{validated\-Tip\-Height} vs \texttt{latest\-Block\-Height}:} these are different concepts owned by different subsystems. \texttt{latest\-Block\-Height} is the live chain tip (driven by the \texttt{wocGetHeaders} tip-10 fetch) and is used for \texttt{tx\-Version} activation gates and UI display. \texttt{validated\-Tip\-Height} is "highest height I can prove SPV for right now" (driven by the \texttt{Header\-Sync\-Service} batch-commit path). Never conflate them; never write one from code that belongs to the other.
+\end{notebox}
+
+\subsection{Commit Path}
+
+\texttt{FORTH.com\-mit\-Val\-i\-dated\-Head\-er\-Run(\_:)} is the single entry point for adding headers to \texttt{blockHeaders} with trust. It requires:
+
+\begin{enumerate}
+\item The run's first header has a local anchor at \texttt{firstHeight - 1} (i.e., the parent is already in the store).
+\item The anchor's hash equals the run's first \texttt{previousblockhash} (the chain link is structurally correct).
+\item The full \texttt{[anchor] + run} batch passes \texttt{SPV\-Service.validate\-Block\-Header\-Chain}, which PoW-validates every header and chain-links consecutive pairs.
+\end{enumerate}
+
+Only runs satisfying all three are committed. Rejections log the exact reason so debugging sync gaps is straightforward. The legacy \texttt{\allowbreak wocGetHeaders} tip-10 fetch is still allowed to place unvalidated headers for display purposes, but those entries are invisible to SPV verification because they fall outside the bounded-lookup range.
+
+\subsection{Auto-Sync Service}
+
+\texttt{Header\-Sync\-Service} (an \texttt{@MainActor} class conforming to \texttt{Web\-Socket\-Connection\-Delegate}) runs the background sync loop. On every launch, \texttt{ContentView.task} calls \texttt{getSavedBlockHeaders} (which enforces the checkpoint seed and recomputes the validated tip) and then \texttt{Header\-Sync\-Service.shared.resume(forth:)}.
+
+The sync loop:
+
+\begin{enumerate}
+\item Opens a WebSocket to \texttt{wss://socket.whatsonchain.com/websocket/history?from=<validated\-Tip\-Height+1>}.
+\item Consumes each incoming text frame via \texttt{on\-Message(connection:text:)} and buffers decoded headers.
+\item When the buffer reaches 500 headers, splits into contiguous runs and flushes each via \texttt{com\-mit\-Val\-i\-dated\-Head\-er\-Run}.
+\item Idle detection via a cancellable \texttt{Task.sleep(for: 3s)} armed on every message --- when the sleep completes uncancelled, the WebSocket disconnects cleanly and the sync transitions to \emph{caught up}.
+\item On no-progress sessions (socket dropped before any headers committed), exponential backoff from 1s to a 60s cap, then retry.
+\end{enumerate}
+
+A \emph{force resync} debug button in Settings $\rightarrow$ Bitcoin $\rightarrow$ Headers wipes the store back to the checkpoint and restarts sync, behind a confirmation dialog.
+
+\subsection{Bounded Lookup and Verification}
+
+\texttt{SPV\-Service.verify\-Transaction(txid:block\-Headers:check\-point\-Height:validated\-Tip\-Height:)} is the single SPV entry point. It:
+
+\begin{enumerate}
+\item Fetches the TSC (BRC-74) Merkle proof for the transaction from WhatsOnChain.
+\item Looks up the containing block header via \texttt{find\-Bounded\-Block\-Header} --- a nonisolated static helper that returns the header only when its height falls in \texttt{[checkpointHeight \ldots validatedTipHeight]}.
+\item PoW-validates the local header (defense in depth).
+\item Verifies the TSC proof against the local header's \texttt{merkleroot}.
+\end{enumerate}
+
+If step 2 returns nil, verification returns \texttt{block\-Header\-Not\-Found} --- \emph{without} fetching the header from WoC. The pre-Phase-5 code had a silent network fallback here that fetched the missing header and used it anyway. A single PoW-valid header in isolation is \textbf{not SPV}: the attacker can produce any chain they like with valid PoW, and a MITM'd WoC response would preserve the format. Removing that fallback is the single most important line of the full-SPV work.
+
+The terminal wrapper \texttt{FORTH.verifySPV(txid:)} distinguishes "still syncing" from "genuinely invalid" by checking the error case: when the failure is \texttt{block\-Header\-Not\-Found}, it prints "\texttt{$\vartriangle$ SPV PENDING: header chain still syncing (local tip N)}" so the user doesn't mistake a sync gap for fraud.
+
+\subsection{Checkpoint Maintenance}
+
+Bumping the checkpoint is a deliberate operation, not routine. The runbook lives inline in \texttt{SPV\-Check\-point.swift} but the summary is:
+
+\begin{enumerate}
+\item Pick a target block at least 500 confirmations below the current chain tip; never within the last 144 blocks.
+\item Fetch the header from a primary source (WhatsOnChain) and \textbf{cross-verify} every field against a second independent source.
+\item Update \texttt{SPV\-Check\-point.mainnet} in source. Commit.
+\item Every user's next launch detects the new checkpoint hash, wipes the local store, and auto-sync re-downloads from the new anchor.
+\end{enumerate}
+
+\begin{notebox}
+\textbf{Never bump without cross-verification.} A compromised or cached response at bump time would silently become the new trust anchor baked into the binary shipped to every user. The second source is non-optional.
+\end{notebox}
 
 \section{UTXOs and Balance}
 
