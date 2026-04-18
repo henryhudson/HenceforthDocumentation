@@ -1441,6 +1441,10 @@ BAP (Bitcoin Attestation Protocol) provides a decentralised identity system buil
                (OP_RETURN with BAP + AIP attestation).
 \end{forthbox}
 
+\begin{notebox}
+\textbf{AIP signatures are over raw message bytes, not hex.} \texttt{bap-sign} and the AIP attestation inside \texttt{bap-register} apply the Bitcoin Signed Message wire format (prefix \texttt{"\textbackslash x18Bitcoin Signed Message:\textbackslash n"} + varint length + payload) directly to the raw payload bytes. Earlier versions signed the ASCII hex rendering of those bytes, which decoded consistently only within Henceforth itself. Signatures produced by current builds verify against any BAP / AIP implementation that follows the standard (including \texttt{@bsv/sdk}); signatures produced by older Henceforth builds will not.
+\end{notebox}
+
 % ──────────────────────────────────────────────────────────────────
 \subsection{Script Recording}
 
@@ -2235,6 +2239,24 @@ Each provider handles what it does best. API keys and subscription IDs are store
 \item \textbf{Wallet file encryption} --- Wallet data files encrypted with AES-256-GCM using a Keychain-backed key before syncing to iCloud.
 \end{itemize}
 
+\subsection{Encrypted Off-Device Backup}
+
+The Keychain-bound wallet encryption above is device-local: the encrypted files on disk are useless on any other device because the key lives in the Secure Enclave of the original phone. If the user loses or factory-resets their phone without having manually recorded the seed phrase elsewhere, the wallet is unrecoverable.
+
+The \emph{encrypted off-device backup} feature (\texttt{.bep} files, produced by \texttt{BackupService}) solves this by emitting a portable, password-encrypted blob that can be stored anywhere --- iCloud Drive, AirDrop to another device, email to self, a USB stick --- and restored on any device, including a fresh install of Henceforth, by re-entering the original password.
+
+\begin{itemize}
+\item \textbf{Key derivation:} PBKDF2-HMAC-SHA256 with a per-backup 16-byte random salt, 600{,}000 iterations (roughly 500ms of CPU on modern iOS hardware). Raises the cost of offline brute-force against weak passwords.
+\item \textbf{Encryption:} AES-256-GCM over the plaintext (typically a BIP-39 mnemonic). GCM is authenticated --- any bit flip in the salt, nonce, ciphertext, or tag fails verification and returns a \texttt{.invalidPassword} error indistinguishable from a genuine wrong-password attempt (no timing oracle).
+\item \textbf{Wire format:} magic prefix \texttt{"HFBK1"} (5 bytes), salt (16 bytes), iteration count (4 bytes big-endian), nonce (12 bytes), AES-GCM ciphertext + 16-byte tag. The iteration count is carried in-band so future backups can raise it without breaking the restore path for older backups.
+\item \textbf{Forward compatibility:} the version byte in the magic prefix allows a future format bump to coexist with older backups on disk.
+\item \textbf{Freshness:} the same plaintext encrypted twice under the same password produces different ciphertexts, because salt and nonce are both fresh random.
+\end{itemize}
+
+\begin{notebox}
+The \texttt{.bep} file protects \emph{only the seed phrase} (the BIP-39 mnemonic from which every wallet key is derived). It does not contain UTXO cache, transaction history, or user preferences --- those are regenerated from the blockchain after restore. A \texttt{.bep} plus its password is sufficient to recover every wallet this seed ever spawned on any Henceforth install.
+\end{notebox}
+
 \subsection{QR Code Scanner}
 
 A unified QR scanner in Settings handles three QR code types, routed automatically by content:
@@ -2269,5 +2291,15 @@ henceforth://wallet/{method}?params=...
 Supported operations include key derivation, signing, encryption, and certificate management (BRC-52/53). All sensitive operations require user approval via an on-screen confirmation sheet with biometric authentication.
 
 The interface follows the BRC-100 specification: a \texttt{WalletInterface} protocol defines the contract, and a \texttt{HenceforthWallet} adapter bridges to the existing wallet, FORTH interpreter, and ARC broadcasting infrastructure.
+
+\subsubsection{Certificate Proofs (BRC-52/53)}
+
+Selective-disclosure certificate proofs follow BRC-52 (field-level HMAC keyring) and BRC-53 (certificate envelope) with the following hardened semantics:
+
+\begin{itemize}
+\item \textbf{Per-field HMAC keyring, ECDH-bound.} When the wallet proves a subset of certificate fields to a verifier, each field's HMAC key is encrypted with an ECDH shared secret derived between the prover's and verifier's BRC-42 identity keys. Only the intended verifier can decrypt the keyring and recompute the field HMACs --- a leaked proof is useless against any other party.
+\item \textbf{Issuer signature verification.} \texttt{verifyProof} checks the issuer's BSM signature over the certificate's canonical field set before accepting any field as authentic. A well-formed proof with a missing or invalid issuer signature is rejected --- format-valid is not the same as cryptographically valid.
+\item \textbf{Serial number carried in the proof.} Each proof includes the certificate's serial number so the verifier can correlate against revocation or re-issuance records maintained out-of-band.
+\end{itemize}
 
 \end{document}
