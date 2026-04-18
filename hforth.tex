@@ -1479,6 +1479,10 @@ Script recording is a macro assembler for Bitcoin Script. When recording is acti
                 List all saved scripts.
 \end{forthbox}
 
+\begin{notebox}
+\textbf{Raw bytes require a \texttt{0x} prefix during recording.} When script recording is active, a bare hex-looking token such as \texttt{ff} is \emph{not} emitted as the byte \texttt{0xff} --- it is parsed according to the current \texttt{BASE} (\texttt{255} in \texttt{DECIMAL}, \texttt{255} in \texttt{HEX}) and pushed to the integer stack. To emit raw opcode bytes into the script buffer, use an explicit \texttt{0x}-prefixed literal (e.g.\ \texttt{0xdeadbeef}). This eliminates the earlier base-dependent ambiguity where \texttt{ff} silently meant different things in \texttt{DECIMAL} versus \texttt{HEX} mode.
+\end{notebox}
+
 % ──────────────────────────────────────────────────────────────────
 \subsection{Script Bridge Words}
 
@@ -2178,11 +2182,12 @@ Satoshi conversions use the named constant \texttt{satoshisPerBSV} (100,000,000)
 
 \subsection{Ordinal Protection}
 
-1Sat Ordinals are NFTs inscribed on single-satoshi UTXOs. The wallet protects ordinals at two levels:
+1Sat Ordinals are NFTs inscribed on single-satoshi UTXOs. The wallet protects ordinals at three levels:
 
 \begin{enumerate}
 \item \textbf{Transaction builder:} UTXOs with a value of 1 satoshi are excluded from UTXO selection during transaction building --- a fast local check with no network call.
-\item \textbf{Inscription scanner:} For display in the Ordinals view, 1-sat UTXOs are scanned by fetching the raw transaction and detecting the \texttt{OP\_FALSE OP\_IF ... OP\_ENDIF} inscription pattern. Non-1-sat UTXOs are skipped entirely (ordinals are always exactly 1 sat). Results are cached per outpoint --- once a UTXO has been scanned, it is never re-fetched from the network.
+\item \textbf{Inscription scanner:} For display in the Ordinals view, 1-sat UTXOs are scanned by fetching the raw transaction and detecting the \texttt{OP\_FALSE OP\_IF ... OP\_ENDIF} inscription pattern in the current output's locking script. Non-1-sat UTXOs are skipped entirely (ordinals are always exactly 1 sat). Results are cached per outpoint --- once a UTXO has been scanned, it is never re-fetched from the network.
+\item \textbf{1Sat indexer fallback:} The inscription scanner only finds inscriptions in the \emph{current} output's script. Ordinals that were transferred to this wallet from elsewhere carry an empty locking script at the receiving output --- the inscription lives in the ancestor minting transaction. To catch these, 1-sat UTXOs with no detectable current-output inscription are checked against the GorillaPool 1Sat indexer (\texttt{ordinals.gorillapool.io}). The lookup is tri-state: the indexer confirms \emph{is-ordinal}, confirms \emph{not-ordinal} (HTTP 404 or no ancestor outpoint), or fails closed on HTTP 5xx, network error, or malformed response. On fail-closed, the UTXO is treated as a potential ordinal and protected from spending --- trusting local state over ambiguous remote state.
 \end{enumerate}
 
 \subsection{UTXO Split}
