@@ -16,6 +16,19 @@
 \usepackage{inconsolata}
 \renewcommand{\familydefault}{\ttdefault}
 
+% Inconsolata's T1/zi4 FD file (TeXLive 2021) declares only /n and
+% /scit shapes --- no /it or /sl. Without these subs, any \emph or
+% \textit on monospace body text falls back to Computer Modern and
+% triggers "font shapes not available". We force-load the FD file
+% by selecting its upright shape once, then register italic/slanted
+% substitutions back to upright. Italic emphasis on a monospace
+% font is stylistically weak anyway, so upright-as-italic reads fine.
+\usefont{T1}{zi4}{m}{n}
+\DeclareFontShape{T1}{zi4}{m}{it}{<-> ssub * zi4/m/n}{}
+\DeclareFontShape{T1}{zi4}{m}{sl}{<-> ssub * zi4/m/n}{}
+\DeclareFontShape{T1}{zi4}{b}{it}{<-> ssub * zi4/b/n}{}
+\DeclareFontShape{T1}{zi4}{b}{sl}{<-> ssub * zi4/b/n}{}
+
 % ─── Colour — Retro-Future Palette ──────────────────────────────
 \usepackage[dvipsnames,svgnames,x11names]{xcolor}
 
@@ -136,6 +149,10 @@
 
 % ─── Headers & Footers ──────────────────────────────────────────
 \usepackage{fancyhdr}
+% fancyhdr requires headheight >= 22pt when a rule is drawn under
+% the header; default 12pt triggers a warning on every page.
+\setlength{\headheight}{22pt}
+\addtolength{\topmargin}{-10pt}
 \pagestyle{fancy}
 \fancyhf{}
 \fancyhead[LE]{\small\textcolor{forthGrey}{\leftmark}}
@@ -219,6 +236,20 @@
     at ($(current page.north west)+(2.5,-16.8)$) {> TX-NEW 5000 TX-SET-FEE};
   \node[anchor=west, text=forthBright, font=\small\ttfamily, opacity=0.09]
     at ($(current page.north west)+(2.5,-17.6)$) {> TX-ADD-OUTPUT TX-BROADCAST};
+  %
+  % ── Pitch — stack-machine tagline ──
+  \node[anchor=west, text=forthDim, font=\small\ttfamily, align=left, text width=16cm]
+    at ($(current page.north west)+(2.5,-19.8)$) {%
+      Write Bitcoin Script in FORTH --- the language\\
+      Bitcoin Script was modeled on. No compiler gap,\\
+      no IR, no formal proofs needed, because source\\
+      and target are the same kind of machine.};
+  \node[anchor=west, text=forthOrange, font=\small\ttfamily\bfseries, align=left]
+    at ($(current page.north west)+(2.5,-22.4)$) {You think on a stack.};
+  \node[anchor=west, text=forthOrange, font=\small\ttfamily\bfseries, align=left]
+    at ($(current page.north west)+(2.5,-22.9)$) {You type on a stack.};
+  \node[anchor=west, text=forthOrange, font=\small\ttfamily\bfseries, align=left]
+    at ($(current page.north west)+(2.5,-23.4)$) {You publish to a stack.};
   %
   % ── Author ──
   \node[anchor=south west, text=forthGrey, font=\large\ttfamily]
