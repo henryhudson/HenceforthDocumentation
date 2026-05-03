@@ -413,13 +413,18 @@ One of the great things about FORTH is its ability to extend the compiler during
            Compile-time version of ' (tick). Compiles the
            execution token of a word into the current definition.
 
-  execute  (xt --)
-           Executes the word whose execution token is on the
-           stack. Enables dynamic word execution.
+  execute  (i*x xt -- j*x)
+           Executes the word whose execution token is on the stack.
+           The i*x/j*x notation acknowledges that the executed
+           word may consume and produce arbitrary values; only the
+           xt itself is consumed by EXECUTE.
 
-  literal  (x --)
-           Compiles a numeric literal into the current word
-           definition during compilation.
+  literal  Compile: (x -- )  Run-time: ( -- x)
+           At compile time, compiles a numeric literal into the
+           current definition; at run time of the containing word,
+           pushes that literal onto the stack. Used inside
+           IMMEDIATE words to inject computed constants into the
+           word being defined.
 
   state    ( -- addr)
            Returns the address of the STATE variable. STATE is 0
@@ -514,12 +519,12 @@ Arithmetic is done using reverse Polish notation, so the numbers are required on
            and returns the result to the stack.
 
   2+       (n -- n+2)
-           Takes the top item from the stack, adds two to it and
-           returns the result to the stack.
+           Adds 2 to the top of the stack. Henceforth extension ---
+           Forth-2012 has only 1+ and 1-. Equivalent to \texttt{2 +}.
 
   2-       (n -- n-2)
-           Takes the top item from the stack, minuses two from it
-           and returns the result to the stack.
+           Subtracts 2 from the top of the stack. Henceforth
+           extension. Equivalent to \texttt{2 -}.
 
   2*       (n -- n*2)
            Takes the top item from the stack, multiplies it by
@@ -530,7 +535,8 @@ Arithmetic is done using reverse Polish notation, so the numbers are required on
            returns the result to the stack.
 
   sumStack (n1 ... n -- sum)
-           Adds all items on the stack and appends the sum.
+           Sums every value on the stack into a single result.
+           Henceforth extension --- not in Forth-2012.
 
   */mod    (n1 n2 n3 -- remainder quotient)
            Multiplies n1 by n2, then divides by n3. Returns
@@ -634,12 +640,16 @@ Double-cell words operate on 64-bit values represented as two stack items (high 
        greater than n2, then returns the flag to the stack.
 
   &&   (n1 n2 -- f)
-       Logical AND. Returns TRUE (-1) if both values are
-       non-zero, FALSE (0) otherwise.
+       Logical AND --- Henceforth extension. Returns -1 if both
+       values are non-zero, 0 otherwise. Forth-2012 has no
+       separate logical AND because the standard \texttt{AND} is
+       bitwise, which produces logical AND when both operands are
+       well-formed flags.
 
   ||   (n1 n2 -- f)
-       Logical OR. Returns TRUE (-1) if either value is
-       non-zero, FALSE (0) otherwise.
+       Logical OR --- Henceforth extension. Returns -1 if either
+       value is non-zero, 0 otherwise. See \texttt{\&\&} note above
+       for why Forth-2012 doesn't ship a separate operator.
 
   0=   (n1 -- f)
        Takes the top value from the stack, checks if it is equal
@@ -662,17 +672,19 @@ Double-cell words operate on 64-bit values represented as two stack items (high 
 \subsection{Bitwise Operators}
 
 \begin{forthbox}[Bitwise Operators]
-  and     (n1 n2 -- AND)
-          Takes the top two values from the stack and returns the
-          result of their logical AND to the stack.
+  and     (x1 x2 -- x3)
+          Bitwise AND of the top two values (Forth-2012 6.1.0720).
+          Note: when both operands are well-formed flags (0 or
+          -1), bitwise AND produces logical AND --- so you don't
+          need a separate logical operator if you keep flags
+          well-formed.
 
-  or      (n1 n2 -- OR)
-          Takes the top two values from the stack and returns the
-          result of their logical OR to the stack.
+  or      (x1 x2 -- x3)
+          Bitwise OR of the top two values (Forth-2012 6.1.1980).
+          Same flag-friendliness as AND.
 
-  xor     (n1 n2 -- XOR)
-          Takes the top two values from the stack and returns the
-          result of their logical XOR to the stack.
+  xor     (x1 x2 -- x3)
+          Bitwise XOR of the top two values (Forth-2012 6.1.2490).
 
   invert  (n -- ~n)
           Bitwise inversion. Flips every bit of the top value
@@ -725,9 +737,10 @@ Double-cell words operate on 64-bit values represented as two stack items (high 
                 The second value from the stack is copied and
                 added to the stack.
 
-  pick          (nx ... n x -- nx ... n nx)
-                Takes the top value from the stack and copies the
-                nth value, appending it to the end of the stack.
+  pick          (x_u ... x_1 x_0 u -- x_u ... x_1 x_0 x_u)
+                Pops u and pushes a copy of the u-th item from
+                the stack (0-indexed from top: 0 PICK is DUP,
+                1 PICK is OVER).
 
   rot           (n1 n2 n3 -- n2 n3 n1)
                 The top three values of the stack are taken and
@@ -755,8 +768,8 @@ Double-cell words operate on 64-bit values represented as two stack items (high 
                 with items 3 and 4 deep being copied and added.
 
   reverseStack  (n1 n2 ... nlast -- nlast ... n2 n1)
-                The first shall become last and the last shall
-                become first. The stack's order is reversed.
+                Reverses the order of every item on the stack.
+                Henceforth extension --- not in Forth-2012.
 
   depth         ( -- n)
                 Returns the number of items currently on the data
@@ -767,36 +780,46 @@ Double-cell words operate on 64-bit values represented as two stack items (high 
                 moved to the top of the stack.
 
   stackCount    ( -- n)
-                The number of items on the stack is added to the
-                stack.
+                Pushes the number of items currently on the stack.
+                Novice-friendly Henceforth alias for \texttt{depth}
+                (Forth-2012 6.1.1200).
 \end{forthbox}
 
 % ──────────────────────────────────────────────────────────────────
 \subsection{Return Stack Operators}
 
 \begin{forthbox}[Return Stack Operators]
-  >r   (n -- )
-       Takes top value from the parameter stack and moves it to
-       the return stack.
+  >r   (x -- )  ( R: -- x)
+       Pops the parameter stack and pushes onto the return stack.
 
-  r>   ( -- n)
-       Takes top value from the return stack and moves it to the
-       parameter stack.
+  r>   ( -- x)  ( R: x -- )
+       Pops the return stack and pushes onto the parameter stack.
 
-  r@   ( -- n)
-       Copies last item from return stack.
+  r@   ( -- x)  ( R: x -- x)
+       Copies the top of the return stack to the parameter stack.
 
-  i    ( -- n)
-       Copies top item in return stack.
+  i    ( -- x)
+       The innermost DO LOOP's index. Copies the top of the return
+       stack.
 
-  i'   ( -- n)
-       Copies second item in return stack.
+  i'   ( -- x)
+       The next-outer loop's index in nested DO LOOPs. Copies the
+       second-from-top of the return stack. Note: differs from
+       FIG-FORTH \texttt{I'} (which returned the inner loop's
+       limit) because Henceforth stores only loop indices on the
+       return stack, not [limit, index] pairs. In Henceforth
+       \texttt{i'} and \texttt{j} return the same value.
 
-  j    ( -- n)
-       Copies third item in return stack.
+  j    ( -- x)
+       The next-outer loop's index in nested DO LOOPs (Forth-2012
+       6.1.1730). In Henceforth's storage model this is the
+       second-from-top of the return stack --- same value as
+       \texttt{i'}.
 
-  nth  ( -- n)
-       Copies the nth item in the return stack.
+  nth  (u -- x)
+       Pops u and pushes the u-th item from the return stack
+       (0-indexed from top). Henceforth extension --- Forth-2012
+       has no return-stack analogue of PICK.
 \end{forthbox}
 
 % ──────────────────────────────────────────────────────────────────
@@ -807,19 +830,26 @@ Double-cell words operate on 64-bit values represented as two stack items (high 
 \end{notebox}
 
 \begin{forthbox}[Decision Operators]
-  if     (f -- )
-         Takes a flag from the stack and executes words if true
-         flag.
+  if     (x -- )
+         Pops one cell. If non-zero, executes the words up to ELSE
+         or THEN. If zero, skips over them.
 
-  else   (f -- )
-         If flag taken from if was false these words will be
-         executed. This is optional.
+  else   ( -- )
+         The optional false branch of an IF...THEN. Has no
+         runtime stack effect --- the flag was already consumed by
+         IF.
 
-  then   (f -- )
-         Denotes the end of the if statement.
+  then   ( -- )
+         Denotes the end of the IF...THEN statement. Has no
+         runtime stack effect.
 
-  not    (f -- f)
-         Takes a flag value and reverses its result.
+  not    (x -- f)
+         Synonym for \texttt{0=} (returns -1 if x is 0, 0 otherwise).
+         Retained for FIG-FORTH compatibility. Forth-2012 dropped
+         \texttt{NOT} because pre-2012 implementations disagreed on
+         whether it meant \texttt{0=} (logical) or \texttt{INVERT}
+         (bitwise). Henceforth's \texttt{NOT} is the logical version.
+         Prefer \texttt{0=} or \texttt{INVERT} in new code.
 
   within (n1 n2 n3 -- f)
          Takes three values from the stack and checks if n2 is a
@@ -848,14 +878,19 @@ Double-cell words operate on 64-bit values represented as two stack items (high 
          Ends a CASE statement. Drops the selector value if no
          OF clause matched.
 
-  catch  (xt -- exception# | 0)
-         Executes the word referred to by xt. If THROW is called
-         during execution, catches the exception and returns
-         the error code. Returns 0 on success.
+  catch  (i*x xt -- j*x 0 | i*x n)
+         Executes the word referred to by xt while protecting the
+         data stack. Returns 0 on success. If THROW is called
+         during execution, restores the stack to its pre-CATCH
+         depth and returns the thrown error code n. The i*x/j*x
+         notation makes it explicit that the stack contents may
+         differ between success and failure paths.
 
-  throw  (0 | exception# -- )
-         Throws an exception. If 0, does nothing. A non-zero
-         value unwinds the stack to the nearest CATCH.
+  throw  (k*x n -- k*x | i*x n)
+         If n is 0, does nothing (no-op). Otherwise unwinds the
+         stack to the nearest CATCH, leaving n as the result.
+         The exception code is implementation-defined; -1 is
+         conventional for ABORT, -2 for ABORT".
 \end{forthbox}
 
 % ──────────────────────────────────────────────────────────────────
@@ -873,24 +908,29 @@ Double-cell words operate on 64-bit values represented as two stack items (high 
          Loops in n1 increments.
 
   every  (n1 -- )
-         Performs word after every, every n1 seconds.
+         Performs the following word every n1 seconds until STOP
+         is called. Henceforth scheduling extension --- not in
+         Forth-2012.
 
   stop   ( -- )
-         Stops every running.
+         Stops the EVERY loop. Henceforth extension --- pairs
+         with EVERY only.
 
-  begin  ( f -- )
-         Marks the start of a while loop.
+  begin  ( -- )
+         Marks the start of a BEGIN...UNTIL or BEGIN...WHILE
+         ...REPEAT loop. Has no runtime stack effect itself.
 
-  while  ( f -- )
-         Tests a condition within a BEGIN...REPEAT loop. If the
-         condition is false, exits the loop.
+  while  (x -- )
+         Tests a condition within a BEGIN...REPEAT loop. Pops
+         one cell; if zero, exits the loop.
 
   repeat ( -- )
-         Marks the end of a BEGIN...WHILE...REPEAT loop and jumps
-         back to BEGIN.
+         Marks the end of a BEGIN...WHILE...REPEAT loop and
+         jumps back to BEGIN.
 
-  until  ( -- )
-         Ends BEGIN loop when condition is met.
+  until  (x -- )
+         Pops one cell; if zero, jumps back to BEGIN. If non-zero,
+         falls through.
 
   leave  ( -- )
          Exits the current DO...LOOP or DO...+LOOP immediately.
@@ -922,16 +962,18 @@ Much like FORTH, Henceforth accepts integers as binary, octal, decimal and hexad
             Supports bases 2 through 36.
 
   decimal   (--)
-            Sets BASE to 10.
+            Sets BASE to 10. Forth-2012 6.1.1170.
 
   binary    (--)
-            Sets BASE to 2.
+            Sets BASE to 2. Henceforth extension. Equivalent to
+            \texttt{2 BASE !}.
 
   octal     (--)
-            Sets BASE to 8.
+            Sets BASE to 8. Henceforth extension. Equivalent to
+            \texttt{8 BASE !}.
 
   hex       (--)
-            Sets BASE to 16.
+            Sets BASE to 16. Forth-2012 6.2.1660.
 \end{forthbox}
 
 % ──────────────────────────────────────────────────────────────────
@@ -1107,10 +1149,15 @@ Much like FORTH, Henceforth accepts integers as binary, octal, decimal and hexad
                Show stack on terminal.
 
   .rs          (--)
-               Shows return stack.
+               Displays the return stack on the terminal. Henceforth
+               extension --- Forth-2012 only specifies \texttt{.s}
+               for the data stack.
 
-  clear        (--)
-               Clears stack and return stack.
+  clear        (i*x --)
+               Empties the data stack, return stack, and terminal
+               screen. Henceforth extension --- non-standard. For just
+               the screen use \texttt{page}; for stacks alone use
+               \texttt{abort}.
 
   bye          (--)
                Clears everything, resets to default settings.
@@ -1130,7 +1177,21 @@ Much like FORTH, Henceforth accepts integers as binary, octal, decimal and hexad
                displays the string at that address to the terminal.
 
   page         (--)
-               Adds 24 new lines to the terminal.
+               Clears the terminal screen (Forth-2012 6.2.2030). In
+               Henceforth's append-only buffer this empties every
+               prior entry so the next emission starts at the top.
+               Does not affect the data, return, or data stack.
+
+  ms           (u --)
+               Wait at least u milliseconds before the next loop
+               iteration (Forth-2012 FACILITY 10.6.2.1905). The
+               request is staged on \texttt{pendingSleepMs} and
+               drained by the surrounding async loop driver
+               (\texttt{do}/\texttt{loop}, \texttt{?do}/\texttt{loop},
+               \texttt{begin}/\texttt{until},
+               \texttt{begin}/\texttt{while}/\texttt{repeat},
+               \texttt{begin}/\texttt{again}). Use it to pace
+               animation and screen updates.
 
   char         ( -- char)
                Parses the next space-delimited word and returns
@@ -1156,9 +1217,12 @@ Much like FORTH, Henceforth accepts integers as binary, octal, decimal and hexad
                keyboards.
 
   ?terminal    ( -- flag)
-               Returns true if the keyboard buffer has input or
-               if a terminal interrupt has been requested (break
-               key pressed), false otherwise. FIG-FORTH semantics.
+               Returns -1 if the keyboard buffer has input or a
+               terminal interrupt has been requested (break key
+               pressed), 0 otherwise. The Forth-2012 standard name
+               is \texttt{ekey?} (FACILITY 10.6.2.1306); both
+               spellings dispatch to the same handler. \texttt{?terminal}
+               is the original FIG-FORTH name.
 
   accept       (c-addr n1 -- n2)
                Receives up to n1 characters from the input source
@@ -1170,12 +1234,16 @@ Much like FORTH, Henceforth accepts integers as binary, octal, decimal and hexad
                Displays session input.
 
   dictionary   (--)
-               Shows the user's defined words, constants and
-               variables.
+               Shows the user's defined words, constants, and
+               variables. Henceforth extension. For all words
+               (built-in plus user-defined) use \texttt{words} or
+               \texttt{vlist}.
 
   vlist        (--)
-               Displays a list of all the built-in words
-               Henceforth offers.
+               Displays a list of every built-in word Henceforth
+               offers. The Forth-2012 standard name is
+               \texttt{words} (TOOLS 15.6.1.2465); both spellings
+               dispatch to the same handler.
 
   forth        (--)
                Resets vocabulary to standard built-in words,
