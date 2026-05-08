@@ -1434,14 +1434,31 @@ The transaction builder words allow programmatic construction of Bitcoin transac
                   Builds, signs, and broadcasts the current
                   transaction to the BSV network via ARC.
 
-  send            (n -- )
-                  Standard payment in a single word. Reads the
-                  destination address(es) from the last ." string
-                  and the amount in satoshis from the stack.
-                  Auto-selects UTXOs from the default wallet,
-                  uses the wallet's fee rate, and broadcasts
-                  via ARC.
-                  Usage: ." 1A1zP1..." 1000 send
+  send            ( amount c-addr u -- )
+                  Standard payment in a single word. Pops the
+                  destination string from the data stack (placed
+                  there by S") and the amount from the integer
+                  stack. The string holds one address (single
+                  recipient) or N space-separated addresses
+                  (equal-split with the remainder going to the
+                  first recipient). Auto-selects UTXOs from the
+                  default wallet, uses the wallet's fee rate,
+                  and broadcasts via ARC.
+                  Usage: 1000 s" 1A1zP1..." send
+
+  send-many       ( amount1 ... amountN c-addr u -- )
+                  Multi-recipient payment with per-recipient
+                  amounts. Pops the address string first to
+                  derive N (the recipient count) from the
+                  space-separated address list, then pops N
+                  amounts. Pairs amount[i] with address[i]
+                  in left-to-right order, builds one
+                  transaction with N P2PKH outputs, and
+                  broadcasts via ARC. Atomic --- any validation
+                  failure (zero amount, invalid address,
+                  insufficient funds) rejects the whole
+                  transaction without partial broadcast.
+                  Usage: 1000 5000 250 s" 1A 1B 1C" send-many
 \end{forthbox}
 
 \begin{notebox}
@@ -1459,12 +1476,23 @@ tx-broadcast
 \textbf{Standard Payment Example:} The \texttt{send} word wraps the entire PayView payment flow into a single command. It uses the \emph{default wallet} (marked with a star on the wallet card):
 \begin{lstlisting}
 \ Single recipient:
-." 1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa" 1000 send
+1000 s" 1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa" send
 
-\ Multiple recipients (space-separated):
-." 1A1zP1... 1BvBMS..." 5000 send
+\ Multiple recipients (equal-split, 2500 sats each):
+5000 s" 1A1zP1... 1BvBMS..." send
 \end{lstlisting}
-Addresses are wrapped in \texttt{."} (dot-quote), which is FORTH's string literal syntax. The address string is placed on the terminal output, and \texttt{send} reads it from there. Multiple addresses can be space-separated within a single \texttt{."} string for multi-output transactions.
+Addresses ride the data stack via \texttt{S"} (FORTH-2012's string literal). \texttt{S"} pushes the address bytes plus their length pair (\texttt{c-addr u}) onto the stack; \texttt{send} pops them after popping the amount. Multiple addresses can be space-separated within a single \texttt{S"} string for an equal-split transaction.
+\end{notebox}
+
+\begin{notebox}
+\textbf{Multi-Recipient Payment with Per-Recipient Amounts:} When recipients should receive \emph{different} amounts, use \texttt{send-many}. The recipient count is derived from the address string (one count source of truth), and the function pops exactly that many amounts from the integer stack:
+\begin{lstlisting}
+\ Three recipients with unequal amounts:
+1000 5000 250 s" 1A1zP1... 1BvBMS... 1FfmbHfn..." send-many
+\end{lstlisting}
+The amounts pair with the addresses by position: \texttt{amount[i]} goes to \texttt{address[i]} reading left-to-right. The function rejects atomically --- if any amount is zero, any address is invalid, or the total exceeds the wallet balance, the whole transaction is aborted before the biometric prompt fires.
+
+Reading rule for both \texttt{send} and \texttt{send-many}: amounts come first, the recipient string comes last. This places the address string at the top of the stack so \texttt{send-many} can read it first and infer N before consuming the amount block --- no explicit count parameter is needed.
 \end{notebox}
 
 \subsubsection{Standard Transaction Script}
