@@ -1414,13 +1414,11 @@ The transaction builder words allow programmatic construction of Bitcoin transac
                   Adds an OP\_RETURN data output to the current
                   transaction.
 
-  tx-preview-on   ( -- )
-                  Enables preview mode --- TX-BROADCAST will show
-                  the transaction without actually broadcasting.
-
-  tx-preview-off  ( -- )
-                  Disables preview mode --- TX-BROADCAST will
-                  broadcast to the network.
+  tx-preview-toggle ( -- )
+                  Toggles preview mode. When ON, TX-BROADCAST shows
+                  the transaction without sending it; when OFF,
+                  TX-BROADCAST broadcasts. The new state is
+                  reported in the terminal.
 
   tx-show         ( -- )
                   Displays the current transaction being built
