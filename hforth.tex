@@ -254,6 +254,8 @@
   % ── Author ──
   \node[anchor=south west, text=forthGrey, font=\large\ttfamily]
     at ($(current page.south west)+(2.5,3)$) {Henry Hudson};
+  \node[anchor=south west, text=forthGrey, font=\small\ttfamily, opacity=0.7]
+    at ($(current page.south west)+(2.5,2.45)$) {henry@henceforth.club};
   % ── Version ──
   \node[anchor=south east, text=forthGrey, font=\small\ttfamily]
     at ($(current page.south east)+(-2.5,3)$) {v1.0 \(\cdot\) 2026};
@@ -2181,6 +2183,34 @@ The \texttt{pay} word in the FORTH terminal opens the transaction builder. The p
 \item \textbf{Upload} --- pick a photo, video, or file from the device and upload it on-chain via the B:// protocol
 \end{itemize}
 
+\subsubsection*{Terminal Send Words}
+
+In addition to \texttt{pay}, two terminal words compose payments directly from the stack:
+
+\begin{itemize}
+\item \textbf{\texttt{send}} --- \texttt{( amount c-addr u -- )}. Example: \texttt{1000 s" 1A..." send} sends 1000 satoshis to the given address. Space-separated addresses in the string equally split the amount across all recipients.
+\item \textbf{\texttt{send-many}} --- \texttt{( amount1 ... amountN c-addr u -- )}. Example: \texttt{1000 5000 250 s" 1A 1B 1C" send-many} sends 1000, 5000, and 250 satoshis to three recipients in one transaction. Per-recipient amounts; the count is derived from the address string, so no explicit count parameter is needed.
+\end{itemize}
+
+Both words accept P2PKH addresses only --- paymail aliases must be resolved through the single-recipient \texttt{send} flow first. \texttt{send-many} surfaces a specific error message when it sees an \texttt{@} character so the user knows why.
+
+\begin{notebox}
+\textbf{Mandatory pre-signing review.} Neither word broadcasts directly. \texttt{send} pre-fills the existing pay view; \texttt{send-many} presents a new \textbf{MultiPaySheet} with a scrollable grid showing each (recipient, amount) row plus the total. The user sees the exact output set before the long-press triggers signature. This is non-negotiable: a malicious script that pushes different values onto the stack between the user's intent and the signing step cannot bypass the visual review. The single canonical confirmation line \texttt{sent TXID: <id>} appears on the terminal after broadcast success; no pre-sheet echo clutters the output.
+\end{notebox}
+
+\subsubsection*{Fragmentation-Aware Selection}
+
+UTXO selection switches to a \emph{fragmentation-aware} policy when the wallet has more than 100 UTXOs OR when the average UTXO value is below 5000 satoshis with more than 40 UTXOs. In this mode:
+
+\begin{itemize}
+\item The dust-input cap rises from 10 to 50, draining more of the dust pile per send.
+\item Regular UTXO sort flips from largest-first to smallest-first, tilting the regular sweep toward consolidation.
+\item Smart-change splitting (which normally creates extra change outputs for large change) is \emph{disabled} --- the residual coalesces into a single primary change output instead of re-fragmenting.
+\item A transaction-size ceiling refuses to assemble a transaction larger than \texttt{maxStandardTxSize} (100\,KB) \emph{before} biometric prompts, surfacing a user-actionable ``consolidate across multiple smaller sends first'' message rather than letting ARC reject after Face ID.
+\end{itemize}
+
+The user initiates an ordinary send; the wallet consolidates as a side effect. No separate ``Consolidate'' button is needed in the normal flow.
+
 \begin{notebox}
 \textbf{Smart Sync:} When a payment is initiated, UTXOs are loaded from the local disk cache first (instant). A network fetch only occurs on genuine first launch when no UTXO file exists. Fee quotes are cached for 5 minutes. A times-table circle animation (cardioid pattern) plays during broadcast. The payment flow trusts local UTXO state --- if a UTXO turns out to be already spent, ARC will reject with \texttt{DOUBLE\_SPEND\_ATTEMPTED}.
 \end{notebox}
@@ -2304,6 +2334,44 @@ Bumping the checkpoint is a deliberate operation, not routine. The runbook lives
 \textbf{Never bump without cross-verification.} A compromised or cached response at bump time would silently become the new trust anchor baked into the binary shipped to every user. The second source is non-optional.
 \end{notebox}
 
+\section{Cold Mode and Air-Gap Bundles}
+
+Cold Mode is a per-wallet flag (\texttt{WalletCard.coldModeEnabled}) that defers broadcast. When set, a transaction the user has approved with Face ID is signed and stored locally as a \emph{pending action} rather than submitted to ARC. The user releases it later from the \textbf{Pending Broadcasts} view --- on the same device or, in the air-gap workflow, after handing off to a watcher iPhone via AirDrop.
+
+\subsection{Bundle Formats}
+
+Three serialisable JSON formats carry data across the air-gap. All three are exchanged via AirDrop, routed by file extension, and validated on import.
+
+\begin{itemize}
+\item \texttt{.hfheaders} (\textbf{HFHeaderBundle}) --- a contiguous run of validated block headers anchored to a checkpoint hash. The signer exports headers it has validated to the watcher (or vice versa); the importer hands the run to the same \texttt{com\-mit\-Val\-i\-dated\-Head\-er\-Run} path that the live WSS sync uses, so chain-link, proof-of-work, and checkpoint-anchor invariants self-enforce.
+\item \texttt{.hfreceipt} (\textbf{HFReceiptBundle}) --- proof that a specific transaction was included in the blockchain. Carries (txid, raw transaction hex, block height, block hash, TSC Merkle proof, containing block header). \texttt{SPV\-Service.verify\-Transaction(from\-Bundle:)} validates inclusion against the importer's own local header at the same height with no network call. \emph{Inclusion alone proves the transaction exists on chain, not that it pays this wallet.} After SPV passes, the importer re-derives output ownership by parsing the raw transaction and refusing the receipt unless at least one output's address resolves to one of the wallet's known derived addresses (across all wallets on the device). Defeats forged receipts for real but unrelated on-chain transactions.
+\item \texttt{.hfaddrpack} (\textbf{HFAddressPack}) --- pre-derived receive addresses pushed outward from signer to watcher. Each entry carries the address, derivation scheme (\texttt{type42} or \texttt{bip44}), and the scheme-specific derivation reference (BRC-43 invoice number or BIP-44 path). The pack is signed by the wallet's m/0/0 BIP32 identity key with a DER ECDSA signature over the canonical pre-signature digest \texttt{(version $\|$ length-prefixed walletTitle $\|$ sorted "scheme:derivationKey:address" lines)}. The watcher's \texttt{decode} verifies the signature against the embedded signer pubkey and refuses tampered packs.
+\end{itemize}
+
+\subsection{Air-Gap Tools UI}
+
+\textbf{Settings $\rightarrow$ Bitcoin $\rightarrow$ Air-Gap Tools} exposes three exporters and a single import button. The importer routes by file extension. Exports go through the system file picker / share sheet so AirDrop, iCloud Drive, and email are all reachable destinations on both iOS and macOS.
+
+\begin{notebox}
+v1 \texttt{.hfreceipt} uses raw transaction plus TSC Merkle proof. A v2 schema bump may upgrade to BRC-62 BEEF for full ancestor-script validation. The wire format carries a one-byte version so the v1 reader can refuse a v2 file loudly rather than silently producing garbage.
+\end{notebox}
+
+\subsection{Watcher-Side Persistence}
+
+In v1.0, \texttt{.hfaddrpack} import validates the signature and counts the addresses; persisting the entries into a watch-only monitoring store wired to \texttt{Mempool\-Monitor\-Service} is staged for the v1.0.2 follow-up. The wire format and signature check ship in v1; the loop closure ships next.
+
+\section{Wallet Data Management}
+
+UTXO and transaction persistence is the most security-critical layer of the wallet. The rules below are invariants, not preferences --- violating any of them risks losing user funds or transaction history.
+
+\begin{itemize}
+\item \textbf{Never overwrite UTXO files with partial data.} A UTXO file is saved only when \emph{all} addresses queried successfully. A partial query (network blip, rate limit) leaves the previous snapshot intact.
+\item \textbf{Conservative merge.} The wallet only removes a UTXO when its owning address was queried \emph{and} the UTXO was not in the response. A UTXO whose address wasn't queried this cycle stays.
+\item \textbf{Never persist a smaller transaction set than what's on disk.} \texttt{persist\-Trans\-actions\-To\-Disk} reads the disk count before writing and refuses the write if the in-memory snapshot has fewer entries, logging ``Refused to shrink tx file'' loudly. Belt-and-braces against any future code path that mutates \texttt{myTransactions} downward.
+\item \textbf{Per-wallet file scoping.} Transactions, UTXOs, and pending broadcast amounts live in wallet-scoped files (\texttt{transactionDetails\_\{walletTitle\}}, \texttt{\{walletTitle\}UTXOS}, \texttt{pendingBroadcastAmounts\_\{walletTitle\}}). On wallet open, in-memory state is cleared and reloaded from that wallet's files only --- no cross-wallet bleed.
+\item \textbf{Trust the per-wallet file on load.} An earlier \texttt{by\-Owner\-ship} filter on the transaction load path was dropping outputs paying to Type42-derived change addresses or paymail-derived receive addresses not yet recorded on the card. The filter wrote the smaller set back to disk on the next save, silently deleting entries. With per-wallet files the scoping is enforced at write time; load-time filtering was both redundant and destructive. The filter has been removed from the load path. Display-time filtering (\texttt{by\-Owner\-ship} in the wallet details views) is non-destructive and remains in place.
+\end{itemize}
+
 \section{UTXOs and Balance}
 
 A UTXO (Unspent Transaction Output) represents a discrete amount of Bitcoin that can be spent. The wallet tracks all UTXOs across all addresses.
@@ -2365,13 +2433,25 @@ Each provider handles what it does best. API keys and subscription IDs are store
 \section{Security}
 
 \begin{itemize}
-\item \textbf{Biometric authentication} --- Face ID or Touch ID required to view private keys, seed phrases, and wallet details. Sessions expire after 120 seconds of inactivity.
+\item \textbf{Biometric authentication} --- Face ID or Touch ID required to view private keys, seed phrases, and wallet details. Sessions expire after 120 seconds of inactivity. The same 120-second window is used by the \emph{payment approval cache} (below) so multiple broadcasts within a session don't re-prompt for every send.
 \item \textbf{Keychain storage} --- All sensitive material (keys, seeds, API tokens) stored with \texttt{.whenUnlockedThisDeviceOnly} accessibility --- encrypted at rest, tied to the device.
 \item \textbf{Seed verification} --- After creating a wallet, users are prompted to verify their seed phrase via a 3-word quiz.
 \item \textbf{No server dependency} --- The wallet is fully self-custodial. No account, no registration, no server holds your keys.
 \item \textbf{Message encryption (BRC-2)} --- Electrum ECIES format for end-to-end encrypted messages between BSV keys. Uses ECDH key agreement, AES-256-CBC encryption, and HMAC-SHA256 authentication. Wire-compatible with the \texttt{@bsv/sdk} \texttt{EncryptedMessage} class. Format: \texttt{"BIE1" $\|$ pubkey $\|$ ciphertext $\|$ HMAC}.
 \item \textbf{Wallet file encryption} --- Wallet data files encrypted with AES-256-GCM using a Keychain-backed key before syncing to iCloud.
 \end{itemize}
+
+\subsection{Payment Approval Cache}
+
+To avoid re-prompting Face ID for every successive broadcast in a single working session, the wallet keeps a session-scoped \emph{approval cache} (\texttt{PaymentApprovalRecord}). A successful biometric approval stamps the cache with \texttt{(surface, amountSats, outputsDigest, timestamp)}. A subsequent broadcast within the 120-second window can skip the prompt when all three scoping axes match.
+
+The \texttt{outputsDigest} is a SHA-256 over a canonical encoding of the sorted output set. Each output contributes \texttt{UInt32-LE(recipientKey.utf8.count)} $\|$ \texttt{recipientKey.utf8} $\|$ \texttt{Int64-LE(satoshis)}. The length-prefix defeats engineered concatenation collisions: \texttt{("ab",1)+("c",2)} no longer collides with \texttt{("a",1)+("bc",2)} after sort-and-concat.
+
+\begin{notebox}
+\textbf{The \texttt{recipientKey} must be the final resolved destination, never an alias.} For paymail surfaces, this means the resolved P2PKH address returned by the paymail server, never the \texttt{alice@example.com} alias string. Using the alias would defeat the cache's protective contract --- a paymail server could change the resolution between the approval at time $T$ and the broadcast at $T+30$ seconds, and the cache would hit (same alias) while signing a transaction to a different address. Binding the digest to the resolved key forces a re-prompt whenever the destination changes.
+\end{notebox}
+
+The empty-digest fallback is permitted for surfaces with deterministic destinations (\texttt{Consolidate} and \texttt{Split} send to the wallet's own change address; raw \texttt{tx-broadcast} ships bytes the user crafted) and prohibited for resolution-flexible surfaces (\texttt{Paymail\-Transaction\-Helper} passes the resolved addresses as the digest input). Cache hits never bridge across the empty / non-empty boundary --- a real-digest approval cannot satisfy a later empty-digest gate, and vice versa.
 
 \subsection{Encrypted Off-Device Backup}
 
