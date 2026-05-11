@@ -1,0 +1,483 @@
+\documentclass[a4paper, 11pt]{article}
+
+% ─── Encoding & Language ─────────────────────────────────────────
+\usepackage[utf8]{inputenc}
+\usepackage[english]{babel}
+\usepackage{microtype}
+
+% ─── Layout ──────────────────────────────────────────────────────
+\usepackage{geometry}
+\geometry{left=2.5cm, right=2.5cm, top=2.8cm, bottom=2.8cm}
+\raggedbottom
+
+% ─── Fonts ───────────────────────────────────────────────────────
+\usepackage{lmodern}
+\usepackage[T1]{fontenc}
+\usepackage{inconsolata}
+\renewcommand{\familydefault}{\ttdefault}
+
+% Inconsolata's T1/zi4 FD file (TeXLive 2021) declares only /n and
+% /scit shapes --- no /it or /sl. Same upright-as-italic substitution
+% as the main book uses, so emphasis doesn't fall back to CM.
+\usefont{T1}{zi4}{m}{n}
+\DeclareFontShape{T1}{zi4}{m}{it}{<-> ssub * zi4/m/n}{}
+\DeclareFontShape{T1}{zi4}{m}{sl}{<-> ssub * zi4/m/n}{}
+\DeclareFontShape{T1}{zi4}{b}{it}{<-> ssub * zi4/b/n}{}
+\DeclareFontShape{T1}{zi4}{b}{sl}{<-> ssub * zi4/b/n}{}
+
+% ─── Colour — Retro-Future Palette (matches hforth.tex) ────────
+\usepackage[dvipsnames,svgnames,x11names]{xcolor}
+
+\definecolor{forthDark}{HTML}{111111}
+\definecolor{forthBg}{HTML}{0A0E0A}
+\definecolor{forthOrange}{HTML}{E8731E}
+\definecolor{forthAmber}{HTML}{F5A623}
+\definecolor{forthGold}{HTML}{CC8800}
+\definecolor{forthCyan}{HTML}{2CA5A0}
+\definecolor{forthTeal}{HTML}{1A8A7A}
+\definecolor{forthGreen}{HTML}{1B9E3E}
+\definecolor{forthBright}{HTML}{00FF41}
+\definecolor{forthGrey}{HTML}{888888}
+\definecolor{forthDim}{HTML}{CCCCCC}
+\definecolor{forthPurple}{HTML}{7744AA}
+\definecolor{forthPanelBg}{HTML}{F5F3EF}
+
+\color{forthDark}
+
+% ─── Graphics & Tables ──────────────────────────────────────────
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{colortbl}
+\arrayrulecolor{forthGrey}
+\setlength{\heavyrulewidth}{0.8pt}
+\setlength{\lightrulewidth}{0.4pt}
+
+% ─── Lists ───────────────────────────────────────────────────────
+\usepackage{enumitem}
+\setlist[enumerate]{label=\textcolor{forthOrange}{\bfseries\arabic*.}, leftmargin=*, itemsep=4pt}
+\setlist[itemize]{label=\textcolor{forthOrange}{\raisebox{0.2ex}{\rule{0.6ex}{0.6ex}}}, leftmargin=*, itemsep=4pt}
+
+% ─── Boxes (forthbox, notebox — identical to hforth.tex) ───────
+\usepackage[most]{tcolorbox}
+\usepackage{listings}
+\lstset{
+  basicstyle=\ttfamily\small\color{forthDark},
+  breaklines=true,
+  columns=fixed,
+  keepspaces=true,
+  aboveskip=0pt,
+  belowskip=0pt,
+}
+
+\newtcblisting{forthbox}[1][]{%
+  enhanced,
+  breakable,
+  colback=forthBg,
+  colframe=forthDark,
+  coltext=forthBright,
+  coltitle=white,
+  fonttitle=\bfseries,
+  boxrule=1.2pt,
+  arc=0pt,
+  left=6mm, right=6mm, top=4mm, bottom=4mm,
+  attach boxed title to top left={yshift=-3mm, xshift=8mm},
+  boxed title style={
+    colback=forthOrange,
+    arc=0pt,
+    boxrule=0pt,
+    left=4mm, right=4mm, top=1.5mm, bottom=1.5mm
+  },
+  title={#1},
+  listing only,
+  listing options={basicstyle=\ttfamily\small\color{forthBright}, breaklines=true, columns=fixed, keepspaces=true},
+}
+
+\newtcolorbox{notebox}{%
+  enhanced,
+  breakable,
+  colback=forthPanelBg,
+  colframe=forthOrange,
+  coltext=forthDark,
+  boxrule=0pt,
+  borderline west={3pt}{0pt}{forthOrange},
+  arc=0pt,
+  left=5mm, right=5mm, top=3mm, bottom=3mm,
+  fontupper=\small,
+}
+
+% ─── Section styling — Retro-Future (article-flavoured) ───────
+\usepackage{titlesec}
+
+\titleformat{\section}
+  {\normalfont\Large\bfseries\color{forthDark}}
+  {\colorbox{forthOrange}{\makebox[1.8em][c]{\color{white}\thesection}}}{0.6em}{}
+  [\vspace{-6pt}{\color{forthDim}\rule{\textwidth}{0.3pt}}]
+
+\titleformat{\subsection}
+  {\normalfont\large\bfseries\color{forthDark}}
+  {\textcolor{forthCyan}{\thesubsection}}{0.6em}{}
+
+\titlespacing*{\section}{0pt}{18pt}{10pt}
+\titlespacing*{\subsection}{0pt}{14pt}{8pt}
+
+% ─── Headers & Footers ──────────────────────────────────────────
+\usepackage{fancyhdr}
+\setlength{\headheight}{22pt}
+\addtolength{\topmargin}{-10pt}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\textcolor{forthGrey}{Multi-Output Transactions}}
+\fancyhead[R]{\small\textcolor{forthGrey}{Henceforth}}
+\fancyfoot[C]{\small\textcolor{forthOrange}{\thepage}}
+\renewcommand{\headrulewidth}{0.5pt}
+\renewcommand{\headrule}{\hbox to\headwidth{\color{forthDark}\leaders\hrule height \headrulewidth\hfill}}
+\renewcommand{\footrulewidth}{0pt}
+
+% ─── Hyperlinks ──────────────────────────────────────────────────
+\usepackage{hyperref}
+\hypersetup{
+  colorlinks=true,
+  linkcolor=forthCyan,
+  urlcolor=forthOrange,
+  citecolor=forthGreen,
+  pdfauthor={Henry Hudson},
+  pdftitle={Multi-Output Transactions for Micropayments},
+}
+
+% ─── TikZ ────────────────────────────────────────────────────────
+\usepackage{tikz}
+\usetikzlibrary{calc,patterns,arrows.meta,positioning}
+
+% ─── Misc ────────────────────────────────────────────────────────
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{pifont}
+\newcommand{\cmark}{\textcolor{forthGreen}{\ding{51}}}%
+\newcommand{\xmark}{\textcolor{forthGrey}{\ding{55}}}%
+\usepackage{fancyvrb}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt plus 2pt minus 1pt}
+\setlength{\emergencystretch}{3em}
+
+% ═════════════════════════════════════════════════════════════════
+\begin{document}
+
+% ─── Title block — banded, lower-key than the book title page ──
+\begin{tikzpicture}[remember picture, overlay]
+  \fill[forthOrange] ($(current page.north west)+(0,-3.2)$) rectangle ($(current page.north east)+(0,-5.6)$);
+  \draw[forthAmber, line width=2pt] ($(current page.north west)+(0,-5.8)$) -- ($(current page.north east)+(0,-5.8)$);
+  \node[anchor=west, text=white, font=\fontsize{28}{32}\selectfont\bfseries\ttfamily]
+    at ($(current page.north west)+(2.5,-4.0)$) {Multi-Output Transactions};
+  \node[anchor=west, text=forthDark, font=\large\ttfamily]
+    at ($(current page.north west)+(2.5,-5.0)$) {A primitive for Bitcoin micropayments};
+\end{tikzpicture}
+
+\vspace*{5.5cm}
+
+\begin{flushright}
+\textcolor{forthGrey}{\small Henry Hudson \quad\(\cdot\)\quad Henceforth \quad\(\cdot\)\quad v1.0 / 2026}
+\end{flushright}
+
+\vspace{0.4cm}
+
+\begin{notebox}
+\textbf{Companion paper.} This document accompanies the main Henceforth book (\texttt{hforth.pdf}) and assumes familiarity with the Bitcoin white paper, the BSV UTXO model, and the FORTH terminal. It documents the design and implementation of two terminal words --- \texttt{send} and \texttt{send-many} --- and the case for treating multi-output transactions as the default unit of payment rather than the exceptional one.
+\end{notebox}
+
+\begin{notebox}
+\textbf{Based on findings from Craig Wright (aka Satoshi Nakamoto).} The work documented here implements components of the system described in Craig Wright, \emph{Batching, Headers, and Throughput: Operating a Bitcoin SV Wallet with Offline Synchronisation and High-Volume Microtransactions}, Craig's Substack, 2026-05-02. The article frames a wallet capable of high-volume operation as built on three pillars --- header-based blockchain awareness (SPV), batch construction of transactions, and structured UTXO management for both sending and receiving. Henceforth had the first and most of the third before this paper was written. The \texttt{send} and \texttt{send-many} words documented here close the second. Section~\ref{sec:position} maps the full architecture against the current implementation, naming the gaps explicitly.
+\end{notebox}
+
+% ═════════════════════════════════════════════════════════════════
+\section{Background}
+% ═════════════════════════════════════════════════════════════════
+
+Section~7 of the Bitcoin white paper, \emph{Combining and Splitting Value}, contains a sentence that has shaped wallet design for fifteen years:
+
+\begin{notebox}
+``To allow value to be split and combined, transactions contain multiple inputs and outputs. Normally there will be either a single input from a larger previous transaction or multiple inputs combining smaller amounts, and \textbf{at most two outputs}: one for the payment, and one returning the change, if any, back to the sender.''
+\end{notebox}
+
+\emph{At most two.} The phrasing is conservative --- in 2008 it described the dominant case --- but it was never a protocol limit. Bitcoin transactions accept an arbitrary number of outputs subject only to the standard maximum transaction size. The protocol primitive is \textbf{a single transaction with N outputs}. The two-output convention is a custom that wallets and exchanges have collectively settled on, mostly out of inertia.
+
+If you accept that the conservative case is a default rather than a ceiling, a great deal becomes possible.
+
+This paper is about one of those possibilities: paying a list of recipients atomically in a single signed transaction. The technique is structurally identical to the standard send --- same UTXO selection, same signing path, same broadcast --- and adds one capability that single-output sends cannot match: \emph{N payments at constant input cost}. For micropayment workflows, that constant matters more than any other property of the transaction.
+
+Wright's 2026 article \emph{Batching, Headers, and Throughput} makes the same point and presses further: it argues that for any wallet expected to operate at the receive side of micropayment flows --- where UTXO sets accumulate by the hundreds --- batching is not a fee optimisation but a structural requirement. A wallet that does not batch its outgoing payments will, over time, also fail to consolidate its incoming ones; the two problems compound. The work documented in this paper implements batching on the send side; the consolidation routine (\texttt{ConsolidateUTXO} in the wallet code, surfaced as the \emph{Consolidate} action in the UTXO detail view) closes the receive side. The two together form the structured UTXO management Wright calls foundational.
+
+% ═════════════════════════════════════════════════════════════════
+\section{The Mathematics of Overhead}
+% ═════════════════════════════════════════════════════════════════
+
+A serialized BSV transaction has three components, each with a known byte cost. Henceforth carries these as named constants in \texttt{Extensions\-For\-Number\-Formatters.swift} so no part of the codebase fee-estimates with raw literals:
+
+\begin{forthbox}[Transaction byte sizes]
+  p2pkhInputSize   = 148    // input + signature + pubkey + index
+  p2pkhOutputSize  = 34     // value + script-length + P2PKH script
+  txOverheadSize   = 10     // version + input count + output count
+                            // + locktime
+\end{forthbox}
+
+The total wire size of a 1-input, $N$-output transaction is therefore:
+
+\[ \text{size}(N) \;=\; 148 \;+\; 34N \;+\; 34_{\text{change}} \;+\; 10 \;=\; 192 \;+\; 34N \]
+
+(One input, $N$ payment outputs, one change output back to the sender, plus the per-transaction header.)
+
+The same total amount paid across $N$ \emph{separate} single-payment transactions costs:
+
+\[ \text{size}_{\text{single}}(N) \;=\; N \cdot (148 + 34 + 34 + 10) \;=\; 226 N \]
+
+The ratio is what makes batching worth talking about. At $N=8$ recipients:
+
+\begin{center}
+\begin{tabular}{@{} l r r r @{}}
+\toprule
+ & \textbf{Single tx, 8 outputs} & \textbf{Eight separate txs} & \textbf{Ratio} \\
+\midrule
+Wire bytes               & 464   & 1808  & 0.26\(\times\) \\
+Fee at 0.05 sat/byte     & 24    & 91    & 0.26\(\times\) \\
+ARC submissions          & 1     & 8     & 0.125\(\times\) \\
+Biometric prompts (terminal) & 1 & 8     & 0.125\(\times\) \\
+Mempool entries          & 1     & 8     & 0.125\(\times\) \\
+Atomicity                & all-or-nothing & per-payment & --- \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+For payments dominated by economically large transfers --- rent, mortgage, salary --- a 67-satoshi fee difference is irrelevant. For micropayments, where individual amounts may themselves be in the low thousands of satoshis, paying four times the fee to avoid batching is the difference between economical and uneconomical workflows. A 14{,}000-sat coffee subscription payment paying an 11-sat fee retains 99.92\% of its value to the recipient. Sending eight of those as eight transactions imposes 88 sats of fee on 112{,}000 sats of value --- still small, but no longer trivially small, and the cost grows linearly with the number of recipients you treat as independent.
+
+\begin{notebox}
+\textbf{The white paper anticipates this.} Section 7 says ``at most two outputs'' but the same paragraph notes that transactions ``contain multiple inputs and outputs.'' The protocol primitive is N-to-M; the two-output case is a convention. Multi-output sending is not an extension to Bitcoin --- it is the unconstrained form of what every wallet already does.
+\end{notebox}
+
+% ═════════════════════════════════════════════════════════════════
+\section{The Henceforth Implementation}
+% ═════════════════════════════════════════════════════════════════
+
+Henceforth exposes two terminal words for sending value:
+
+\begin{forthbox}[Send words]
+  send         (amount c-addr u -- )
+               Pay `amount` satoshis to the address (or
+               space-separated addresses) specified by the
+               counted string at (c-addr, u). When the string
+               contains multiple addresses, the amount is split
+               equally across them.
+
+  send-many    (amount1 ... amountN c-addr u -- )
+               Pay individual amounts to N addresses. N is
+               derived from the address string at the top of
+               the stack; the word then pops exactly N amounts
+               below it. amount[i] pairs with address[i] in the
+               order the user pushed them.
+\end{forthbox}
+
+Both words share one rule: \emph{amounts first, recipient string at the end}. The string is placed at the top of the stack so the word can read it first, derive $N$ from the space-separated address count, and only then consume the right number of amounts. The alternative we considered --- recipient string at the bottom plus an explicit $N$ parameter --- carried redundant ceremony, since the address string already declares the count implicitly. Removing the explicit count parameter makes the contract harder to misuse.
+
+\subsection{Stack discipline}
+
+A successful invocation of \texttt{send-many} consumes the entire stack contribution and leaves no residue:
+
+\begin{forthbox}[send-many stack trace]
+  > 320000 95000 42500 14000 8500 22000 18000 250000
+  >  ok.   ( 8 amounts on the stack )
+
+  > s" 1Land... 1Groc... 1Util... 1Cof... 1News... 1Gym... 1Stream... 1Cold..."
+  >  ok.   ( S" pushes (c-addr, u) on top; addresses live in data memory )
+
+  > send-many
+  send-many: queued 8 outputs totalling 770000 sats
+   ok.   ( all 10 stack items consumed atomically )
+\end{forthbox}
+
+If \emph{any} validation step fails --- one bad address, one zero amount, total exceeding wallet balance --- the entire stack is restored to its pre-call state. The user can inspect, correct the input, and retry. This is a property of the implementation, not the protocol: the Swift function pops nothing it cannot complete, and on every error path it re-pushes the items in the order the user originally placed them.
+
+\subsection{Why this shape and not another}
+
+Three alternative designs were tried before settling on the current one:
+
+\begin{itemize}
+\item \textbf{v1 ---} read the address from \texttt{terminalResponses.last} (the \texttt{."} channel). Coupled the address parse to terminal output state. Any future change to how terminal lines were buffered would have silently broken sending.
+\item \textbf{v2 ---} \texttt{S"} with stack effect \texttt{( c-addr u amount -- )}. Decoupled from terminal output, but reads unnaturally: ``the address, then the amount, then \texttt{send}.''
+\item \textbf{v3 (shipped) ---} \texttt{S"} with stack effect \texttt{( amount c-addr u -- )}. Reads as ``\emph{n satoshis to address x}.'' Same shape as \texttt{send-many}, which couldn't be flipped without losing the implicit-$N$ property described above.
+\end{itemize}
+
+The cost of v3 is asymmetry with English (we say ``pay alice 100,'' not ``100 to alice'') --- the benefit is the implicit-$N$ contract and a single rule across both words. Consistency between two words the user constantly switches between is worth more than alignment with English word order.
+
+% ═════════════════════════════════════════════════════════════════
+\section{Worked Example: One Weekly Bill, One Transaction}
+% ═════════════════════════════════════════════════════════════════
+
+Consider a freelancer paying their fixed weekly costs every Friday. Eight recipients, eight separate amounts, all in BSV:
+
+\begin{center}
+\begin{tabular}{@{} l l r @{}}
+\toprule
+\textbf{Recipient}                  & \textbf{Address (truncated)}    & \textbf{Amount (sats)} \\
+\midrule
+Landlord (weekly rent share)        & \texttt{1Land...kqW}            & 320{,}000 \\
+Groceries (paymail $\rightarrow$ corner store) & \texttt{1Groc...xR2}    & 95{,}000 \\
+Electricity \& internet             & \texttt{1Util...mB7}            & 42{,}500 \\
+Coffee subscription                 & \texttt{1Cof...p3J}             & 14{,}000 \\
+Newspaper (digital, weekly)         & \texttt{1News...t9K}            & 8{,}500 \\
+Gym (off-peak)                      & \texttt{1Gym...sV4}             & 22{,}000 \\
+Streaming bundle                    & \texttt{1Strm...e6W}            & 18{,}000 \\
+Cold wallet (weekly auto-savings)   & \texttt{1Cold...zY1}            & 250{,}000 \\
+\midrule
+\textbf{Total}                      &                                 & \textbf{770{,}000} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The whole payment is one line at the terminal:
+
+\begin{forthbox}[Weekly bill: one transaction]
+  > 320000 95000 42500 14000 8500 22000 18000 250000
+  > s" 1Land...kqW 1Groc...xR2 1Util...mB7 1Cof...p3J
+  >    1News...t9K 1Gym...sV4 1Strm...e6W 1Cold...zY1"
+  > send-many
+
+  Confirm send-many to 8 recipients (770000 sats)
+   [Face ID prompt]
+
+  send-many: queued 8 outputs totalling 770000 sats
+   ok.
+\end{forthbox}
+
+\subsection{What goes on the wire}
+
+The serialized transaction is one 1-input, 9-output structure (eight payment outputs plus one change output back to a freshly-derived change address):
+
+\[ \text{size} \;=\; 148 \;+\; 8 \cdot 34 \;+\; 34_{\text{change}} \;+\; 10 \;=\; 464 \text{ bytes} \]
+
+At a current ARC fee rate of 0.05 sat/byte that is a 24-satoshi fee --- 0.003\% of the 770{,}000-sat payment. Eight separate transactions for the same eight payments would be $8 \cdot 226 = 1808$ bytes and approximately 91 sats of fee. The fee saving is small in absolute terms, but compounded weekly --- 52 weeks at four extra fees-per-week saved is around 3{,}500 satoshis per year per workflow --- and the structural savings are larger:
+
+\begin{itemize}
+\item \textbf{One biometric prompt.} The user is not asked to authenticate eight times for what is conceptually a single decision.
+\item \textbf{One ARC submission.} One round trip to GorillaPool. If GorillaPool fails, one failover to TAAL --- not eight.
+\item \textbf{One mempool entry.} The eight payments are seen by the network together, settled together, and confirmed together. No payment is in the mempool while another has already confirmed.
+\item \textbf{Atomicity.} If the landlord's address contains a typo, no payments are sent. With eight separate transactions, the first seven could broadcast successfully before the eighth fails --- leaving the user with a half-paid bill list and no clean retry path.
+\item \textbf{One transaction in history.} The wallet's transaction list shows ``Friday bills: 770{,}000 sats, 8 recipients'' instead of eight near-simultaneous outgoing entries that the user has to mentally re-group.
+\end{itemize}
+
+\subsection{What goes on-chain}
+
+The on-chain shape is identical to any other Bitcoin transaction. From the network's perspective, the freelancer paid 770{,}000 satoshis from one input to eight payees, with change returned to themselves. Every recipient sees a normal P2PKH output addressed to them, indistinguishable from a single-purpose payment. There is no batching protocol --- the protocol primitive is the single transaction, and it always supported N outputs.
+
+The landlord's wallet, polling for new transactions to its receive address, gets a 320{,}000-sat outpoint exactly as if the freelancer had paid them alone. So does each of the other seven recipients. None of them needs to know they were one item on a list, and the on-chain footprint is a single 464-byte transaction instead of 1{,}808 bytes spread across eight independent ones.
+
+% ═════════════════════════════════════════════════════════════════
+\section{Validation, Approval, and Failure Modes}
+% ═════════════════════════════════════════════════════════════════
+
+\texttt{send-many} runs a five-step validation cascade before touching the wallet. Every step either succeeds or restores the stack to its pre-call state with a specific error message --- there is no partial state.
+
+\begin{enumerate}
+\item \textbf{Stack arity.} The integer stack must hold at least the (c-addr, u) pair on top. Without those two, the word cannot even read the address string. Failure: \texttt{Stack underflow \{send-many\}}.
+\item \textbf{Address string non-empty and parseable.} The string at (c-addr, u) is recovered from data memory and split on whitespace. Empty string or zero-address result: re-push (c-addr, u) and return \texttt{Invalid address string} or \texttt{No addresses parsed}.
+\item \textbf{Amount count matches address count.} With $N$ addresses parsed, the stack must hold at least $N$ more integers below the (c-addr, u) pair. Failure message reports both numbers: ``\texttt{$N$ addresses parsed; need $N$ amounts on the stack}.''
+\item \textbf{All amounts positive.} Zero or negative amounts are rejected with the full set restored in original push order. This is a hard invariant: BSV outputs of zero satoshis are technically legal but always wrong intent, and dust thresholds make small-positive outputs unhelpful.
+\item \textbf{Each address structurally valid.} \texttt{Wallet.validateBSVAddress} (Base58Check + version byte + checksum) is called on every address. The first failure aborts with the offending address quoted.
+\end{enumerate}
+
+After validation, the total amount is compared against the wallet's confirmed + unconfirmed balance --- a fast local check that fails before the biometric prompt, so the user is not asked to authenticate for a transaction that cannot build.
+
+\subsection{Biometric approval is scoped, not per-output}
+
+The approval message reads ``\texttt{Confirm send-many to 8 recipients (770000 sats)}.'' One Face ID prompt, one decision. The 120-second approval cache (\texttt{PaymentApproval.swift}) is keyed on the surface (\texttt{.terminal}) and the total amount in satoshis, so a follow-up \texttt{send-many} with the same total within the window does not re-prompt --- which is correct for the typical pattern of running an automation that issues two related batches.
+
+Crucially, the user is approving \emph{a labelled batch of $N$ payments totalling $X$ sats}, not \emph{the bytes of a constructed transaction}. The current approval flow shows the total and the recipient count but does not enumerate the inputs being spent. This is an acknowledged limitation of the current implementation, not a property of multi-output sending --- the same limitation applies to single-output \texttt{send}. Surfacing input decomposition (\emph{which UTXOs are being consumed, from which addresses}) is on the post-launch backlog under the BRC-100 \texttt{createAction} approval-flow work.
+
+\subsection{Cold Mode}
+
+When the active wallet has Cold Mode enabled (\texttt{WalletCard.coldModeEnabled} = true), \texttt{send-many} does not broadcast. Instead, the transaction is built, signed, and queued in the Pending Broadcasts view exactly as a single-output \texttt{send} would be. The user manually broadcasts later from a network-connected device. No part of the multi-output construction --- UTXO selection, fee estimation, signing, change derivation --- requires the network. Only the final ARC submission does.
+
+% ═════════════════════════════════════════════════════════════════
+\section{Why This Belongs in a Terminal}
+% ═════════════════════════════════════════════════════════════════
+
+A graphical wallet UI for ``pay eight recipients in one transaction'' is not impossible --- it just requires a custom screen, a custom data entry pattern, and a custom approval flow, all of which are downstream of someone deciding that batched payment is a feature worth UI investment. Henceforth's terminal makes the same operation a one-liner without any of that downstream design work:
+
+\begin{forthbox}[Composability]
+  : weekly-bills  ( -- )
+     320000 95000 42500 14000 8500 22000 18000 250000
+     s" 1Land...kqW 1Groc...xR2 1Util...mB7 1Cof...p3J
+        1News...t9K 1Gym...sV4 1Strm...e6W 1Cold...zY1"
+     send-many ;
+
+  > weekly-bills
+  Confirm send-many to 8 recipients (770000 sats)
+   ok.
+\end{forthbox}
+
+The user has defined a personal word, \texttt{weekly-bills}, that captures their weekly payment routine in a single token. Running it costs them one biometric tap. Changing an amount or address is a normal edit to the word's definition. Saving the definition in a \texttt{.fs} file makes it portable across devices.
+
+This is the FORTH composability argument applied to payment automation: every word the user defines is a new affordance, and the cost of defining a new affordance is exactly the cost of writing its body once. Multi-output sending is not a feature that has to be added to a UI --- it is what falls out of treating the payment primitive as a stack operation.
+
+% ═════════════════════════════════════════════════════════════════
+\section{Position within the Wider Architecture}
+\label{sec:position}
+% ═════════════════════════════════════════════════════════════════
+
+Wright's article treats a high-volume wallet as a system of components, none of which can be removed without loss: offline signer, header sync, watch-only monitoring, batching, consolidation, fresh-address strategy, and a non-negotiable pre-signing verification step. The table below records where Henceforth currently stands against each --- explicitly marking what is shipped, what is partial, and what remains.
+
+\begin{center}
+\begin{tabular}{@{} p{6.2cm} p{6.4cm} c @{}}
+\toprule
+\textbf{Component (Wright)}              & \textbf{Henceforth implementation}                       & \textbf{Status} \\
+\midrule
+Offline signer (cold storage)            & \texttt{WalletCard.coldModeEnabled}, PendingBroadcasts    & \cmark{}\,\textsuperscript{a} \\
+Header-based blockchain awareness        & \texttt{HeaderSyncService}, \texttt{SPVCheckpoint}        & \cmark{} \\
+Offline header transfer (removable media) & not implemented                                          & \xmark{} \\
+Watch-only address monitoring            & \texttt{MempoolMonitorService}, JungleBus polling         & \cmark{} \\
+Merkle-proof export for offline verify   & not implemented                                           & \xmark{} \\
+Batch construction of transactions       & \texttt{send}, \texttt{send-many} (via \texttt{MultiPaySheet})      & \cmark{} \\
+UTXO consolidation                       & \texttt{ConsolidateUTXO} + send-time selection drains dust          & \cmark{}\,\textsuperscript{b} \\
+Fresh address per payment                & Type42 address rotation, automatic post-tx                          & \cmark{} \\
+Verification before signing              & \texttt{MultiPaySheet} per-recipient grid; single recipient via PayView & \cmark{}\,\textsuperscript{c} \\
+\bottomrule
+\end{tabular}
+
+\vspace{4pt}
+\begin{minipage}{0.94\linewidth}
+\small\textsuperscript{a} Cold Mode is a per-wallet software flag, not a hardware air-gap.\\
+\textsuperscript{b} \texttt{selectUTXOs} now switches to a fragmentation-aware policy (raised dust cap, smallest-first phase 2) when the wallet has more than 100 UTXOs --- normal sends drain the dust pile as a side effect (Wright \S V). Still pending: a fragmentation banner in PayView's pre-broadcast section so the user can see the consolidation happening, and a transaction-size ceiling fallback for pathologically fragmented wallets.\\
+\textsuperscript{c} \texttt{MultiPaySheet} shows each recipient + amount as a grid row before the long-press triggers broadcast; the user reviews the output side. Input UTXO decomposition (which UTXOs are spent + source addresses + SPV state) not yet surfaced --- the BRC-100 \texttt{createAction} byte-level review backlog covers both PayView and MultiPaySheet with the same fix.
+\end{minipage}
+\end{center}
+
+The two unimplemented rows --- offline header transfer and Merkle-proof export --- are the obvious next step for users who want a literal interpretation of the article's two-machine model. The current Cold Mode implementation provides functional separation (sign locally, broadcast later, optionally on a different device) but does not formalise the removable-media bridge Wright describes. Both items are tracked in the post-launch backlog.
+
+% ═════════════════════════════════════════════════════════════════
+\section{Discussion}
+% ═════════════════════════════════════════════════════════════════
+
+Three observations from shipping this:
+
+\textbf{The two-output convention is sticky.} Every wallet that exposes only a single-recipient pay screen is silently asserting that the two-output case is the unit of payment. For workflows that genuinely are one-to-one, this is fine. For workflows that are not --- weekly bills, payroll, micropayment distributions, royalty splits, multi-party settlements --- the convention costs real fees and forces users to manually orchestrate what the protocol already supports atomically.
+
+\textbf{Atomicity is the underrated property.} The fee saving is the easy headline, but the practical user-facing benefit is that the eight payments either all happen or none do. The freelancer in our worked example cannot end up with rent paid and groceries unpaid because of an intermittent ARC failure between the second and third submissions --- there is no second submission. ARC accepts the 464-byte transaction or rejects it; either way the user knows the state of all eight payments with one confirmation.
+
+\textbf{Naming N to derive N is the small interface decision that paid off.} The address string declares $N$ implicitly. Requiring the user to also push $N$ as a separate integer would have been redundant ceremony, and any redundancy in a stack-based interface is an opportunity for the two redundant pieces to disagree. Removing the explicit count made the word strictly harder to misuse and strictly easier to read.
+
+\section{Further Work}
+
+Items below the line are the gaps named in the architecture table that this paper closes by acknowledgement only. The work itself is on the post-launch backlog.
+
+\begin{itemize}
+\item \textbf{Decompose approval.} The Face ID prompt should surface the UTXOs being spent and the source addresses, not just the total. Same limitation in single-output \texttt{send}; same fix. Wright's article calls this step ``non-negotiable.''
+\item \textbf{Streaming \texttt{send-many}.} For pay-per-second use cases, a higher-level word could accumulate (recipient, rate) tuples over time and flush them on an interval --- one transaction per minute or per session instead of one per second. The \texttt{send-many} primitive is the building block; the scheduler is what would be new.
+\item \textbf{Cross-input batching.} The current implementation is 1-input-to-N-outputs. Combining $M$ inputs funding a shared $K$ outputs (multi-party settlement) extends this to $M$-to-$K$, which the protocol already supports and the Swift transaction builder does not yet expose at the terminal layer.
+\item \textbf{Offline header transfer.} Wright's article (\S III) describes batch-exporting headers from an online machine to removable media and re-importing them on the air-gapped signer. Henceforth's \texttt{HeaderSyncService} streams headers over WebSocket and is structurally network-dependent. A serialisable header-range export (validated tip back to checkpoint, or a windowed slice) plus a corresponding import path on the signer side would let a true two-device Cold Mode work without the signer ever touching a network. The header store's chain-link invariant already makes the imported batch verifiable end-to-end --- the format is the only thing missing.
+\item \textbf{Merkle-proof export for offline verification of received funds.} Companion to the header export: when the online watcher detects a deposit, it should be able to package the TSC (BRC-74) Merkle proof plus the relevant header for the signer to verify the receipt without trusting the watcher. \texttt{SPVService.verifyTransaction} already does this verification in process; exposing it on a bundled-input path is the work.
+\item \textbf{Automatic consolidation trigger.} Wright's \S V--XI argue that fragmentation is inevitable for any wallet on the receive side of micropayments and that periodic consolidation is the only sustainable answer. \emph{Partially shipped:} \texttt{Wallet.selectUTXOs} now switches to a fragmentation-aware policy when the wallet has more than 100 UTXOs (raised dust cap, smallest-first phase 2), so normal sends drain the dust pile as a side effect --- the user initiates an ordinary send and the wallet consolidates with no extra prompt. Still pending: a fragmentation banner in PayView's pre-broadcast section so the user sees ``you're about to spend 47 small UTXOs --- this transaction consolidates them at no extra cost'' before the long-press, and a transaction-size ceiling fallback for pathologically fragmented wallets (\textgreater 200 inputs would otherwise exceed the standard relay limit).
+\end{itemize}
+
+\begin{notebox}
+The point of all of this is small. We removed a redundant count parameter from a stack-based interface, exposed an existing Swift function as a FORTH word, and wrote a short validation cascade. The behaviour it enables --- atomic batched payments at constant input cost --- has been latent in the Bitcoin protocol since 2008. The change is not the capability; the change is making the capability one line at a terminal.
+\end{notebox}
+
+\end{document}
