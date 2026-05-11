@@ -1436,9 +1436,12 @@ The transaction builder words allow programmatic construction of Bitcoin transac
                   stack. The string holds one address (single
                   recipient) or N space-separated addresses
                   (equal-split with the remainder going to the
-                  first recipient). Auto-selects UTXOs from the
-                  default wallet, uses the wallet's fee rate,
-                  and broadcasts via ARC.
+                  first recipient). Validates the inputs, then
+                  presents PayView with the amount + address
+                  pre-filled. The user long-presses to confirm;
+                  Face ID gates the actual broadcast via ARC.
+                  Terminal output on success is a single line:
+                  "sent TXID: <id>".
                   Usage: 1000 s" 1A1zP1..." send
 
   send-many       ( amount1 ... amountN c-addr u -- )
@@ -1447,8 +1450,11 @@ The transaction builder words allow programmatic construction of Bitcoin transac
                   derive N (the recipient count) from the
                   space-separated address list, then pops N
                   amounts. Pairs amount[i] with address[i]
-                  in left-to-right order, builds one
-                  transaction with N P2PKH outputs, and
+                  in left-to-right order. Validates every
+                  payee, then presents MultiPaySheet with a
+                  per-recipient grid so the user reviews the
+                  output set before Face ID. On confirm, builds
+                  one transaction with N P2PKH outputs and
                   broadcasts via ARC. Atomic --- any validation
                   failure (zero amount, invalid address,
                   insufficient funds) rejects the whole
