@@ -2143,6 +2143,68 @@ One wallet can be marked as the \emph{default wallet}, indicated by a star on th
 
 To change the default wallet, open the wallet details view and tap \textbf{Set as Default Wallet}. The setting persists across app launches.
 
+\subsection{Cross-Device Sync}
+
+Henceforth is \emph{local-first}: each device owns its own copy of every wallet's state, and the canonical authority for spending is the seed phrase stored in that device's Keychain. The cross-device sync layer exists to make a freshly-restored device show its true balance immediately, without forcing the user to re-derive every address from scratch.
+
+\subsubsection*{What syncs and what doesn't}
+
+\textbf{Never synced} (local-only, never leaves the device):
+
+\begin{itemize}
+\item \textbf{Seed phrases and private keys} --- Keychain entries are flagged \texttt{whenUnlockedThisDeviceOnly} with \texttt{isSynchronizable: false}. The system enforces this; iCloud cannot replicate them even if asked.
+\item \textbf{The encrypted \texttt{Wallets.json}} --- protected by a device-specific Keychain-backed AES-256-GCM key. The file may sync to iCloud Drive as a blob, but no other device can decode it.
+\end{itemize}
+
+\textbf{Synced} (per-wallet JSON files in iCloud Drive, keyed by the wallet's primary derived address):
+
+\begin{itemize}
+\item \texttt{wallet\_<primary>\_Addresses.json} --- derived address list, derivation paths, indexes, current receive address.
+\item \texttt{wallet\_<primary>\_UTXOS.json} --- the wallet's UTXO snapshot from the most recent fetch.
+\end{itemize}
+
+These files contain only public on-chain data --- addresses are already public, UTXOs are queryable by anyone with the address. Sync does not weaken the wallet's security posture; it just saves the receiving device a round-trip to WoC for each address.
+
+\subsubsection*{Read strategy --- four tiers}
+
+When a wallet card is opened or merged, Henceforth tries to load its address and UTXO state in this order:
+
+\begin{enumerate}
+\item \textbf{Local sandbox JSON} --- fastest. The authoritative state for the device's own writes.
+\item \textbf{iCloud Drive by primary-address filename} --- finds the wallet's own iCloud copy on a freshly-restored device.
+\item \textbf{Content-overlap scan} --- if no exact filename match exists, Henceforth walks every \texttt{*Addresses.json} and \texttt{*UTXOS.json} in the iCloud container and merges any whose address (or UTXO owner-address) set overlaps the local wallet's canonical address set, \emph{or} contains the local wallet's primary. This is the load-bearing tier for the common ``same seed, different wallet names'' case --- a user with ``Hudson'' on iPhone and ``MAC'' on a Mac, restored from the same seed, sees the iPhone's address file picked up automatically by the Mac wallet even though no filename matches.
+\item \textbf{iCloud Key-Value Store} --- secondary instant-push channel. Currently unentitled and treated as a no-op fallback; the Drive layer carries all the working state.
+\end{enumerate}
+
+The content-overlap tier defeats both \emph{device-name divergence} and \emph{derivation-convention divergence}. Two wallets with the same seed always derive at least the BIP-44 primary at the same address, even if one device uses BIP-44 paths and the other Type-42 invoice numbers --- so the overlap test is a sound identity proof without ever transmitting the seed.
+
+\subsubsection*{Cross-device discovery and auto-fetch}
+
+After the per-wallet merges complete, Henceforth runs a final additive pass that unions any matching cross-device file into every local wallet whose canonical address set overlaps. Wallet cards are \emph{never} auto-created from orphan iCloud files --- the iteration scope is the local wallet list. A user who deletes a wallet card and re-launches will not see it resurrect from iCloud, even though the address file may persist.
+
+When the discovery pass marks one or more wallets as touched by cross-device evidence, Henceforth dispatches a background \texttt{Task} that calls the standard UTXO fetch for each touched wallet. The fetch runs serially, largest-first (so a 50-address wallet doesn't queue behind a 0-address wallet whose history sweep would block for minutes), with a base-58 checksum pre-skip for placeholder primaries and three retries spaced five seconds apart to absorb WoC rate-limiting.
+
+\subsubsection*{Partial-fetch persistence}
+
+WoC enforces a hard rate limit of three requests per second from a single IP; a wallet with 50+ addresses reliably has three to fifteen of them rate-limited on any single sweep. The wallet's conservative merge already preserves UTXOs at addresses that weren't queried this round, so the post-merge state is monotonically improving relative to disk regardless of how many addresses succeeded. Henceforth persists that post-merge state on every fetch, partial or full, and updates the displayed balance as a \emph{lower bound} via \texttt{max(previous, computed)}. The displayed balance therefore never decreases from incomplete data; it can only rise as subsequent fetches widen coverage.
+
+\subsubsection*{Pending-import banner}
+
+If the discovery pass finds an iCloud Drive address file whose primary doesn't correspond to any local wallet, the Wallets screen shows a banner indicating how many such wallets exist. Tapping it opens an import sheet where each row offers a \textbf{Restore} button that triggers the standard new-wallet flow, prompting the user for the seed phrase. The wallet card is only created once the user provides the seed; the sync layer never invents card state on its own.
+
+\subsubsection*{What this prevents}
+
+The cross-device strategy was built to close a specific class of user-facing failure: a freshly-restored device showing 0~BSV even though the user can see real funds on another device with the same seed. The mitigations map directly onto the symptoms:
+
+\begin{itemize}
+\item A fresh device showing 0~BSV: the auto-fetch on launch raises the balance within thirty to sixty seconds.
+\item Some addresses rate-limited: partial save preserves what we know; the next launch refines upward.
+\item Two devices with different wallet names: content-overlap matches by address set, not filename.
+\item A wallet on one device but not another: the banner surfaces it; the user provides the seed; the merge populates on the next launch.
+\end{itemize}
+
+The strategy is deliberately additive everywhere --- never destructive, never inferring spending capability, never overwriting populated state with empty data.
+
 \section{Transactions}
 
 \subsection{Receiving}
